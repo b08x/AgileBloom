@@ -1,8 +1,9 @@
 
 
+
 import { GoogleGenAI, GenerateContentResponse, Part, GenerateContentParameters } from "@google/genai";
 import { DiscussionMessage, ExpertRole, GeminiResponseJson, UploadedFile, SupportedModel } from '../types';
-import { EXPERTS, INITIAL_SYSTEM_PROMPT_TEMPLATE, FISH_SCRUM_ANALYSIS_PROMPT_SECTION, SUPPORTED_IMAGE_MIME_TYPES } from '../constants';
+import { EXPERTS, INITIAL_SYSTEM_PROMPT_TEMPLATE, FISH_SCRUM_ANALYSIS_PROMPT_SECTION, SUPPORTED_IMAGE_MIME_TYPES, SUPPORTED_MODELS } from '../constants';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 
 const API_KEY = process.env.API_KEY;
@@ -16,59 +17,6 @@ const ai = new GoogleGenAI({ apiKey: API_KEY || "NO_KEY_FOUND_RUNTIME" });
 
 const MAX_RETRIES = 3;
 const INITIAL_DELAY_MS = 1000;
-
-export async function listAvailableModels(): Promise<SupportedModel[]> {
-  if (useAgileBloomStore.getState().isQuotaExceeded) {
-    console.warn("Model listing blocked because API quota has been exceeded.");
-    throw new Error("Cannot fetch models; API quota has been exceeded.");
-  }
-
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey === "NO_KEY_FOUND" || apiKey === "NO_KEY_FOUND_RUNTIME") {
-    throw new Error("Gemini API Key is not configured.");
-  }
-
-  try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    if (!response.ok) {
-      const errorBody = await response.json();
-      const errorMessage = errorBody?.error?.message || '';
-       if (errorMessage.toLowerCase().includes('quota exceeded')) {
-          useAgileBloomStore.getState().setQuotaExceeded(true);
-          throw new Error(`API quota exceeded. Please try again later. ${errorMessage}`);
-       }
-      throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}. ${errorMessage}`);
-    }
-    const data = await response.json();
-
-    const processedModels = data.models
-      .filter((model: any) => 
-        model.name.startsWith('models/gemini') &&
-        model.supportedGenerationMethods.includes('generateContent') &&
-        !model.name.includes('embedding') &&
-        !model.name.includes('aqa') // Filter out tuned "Attributed-Question-Answering" models
-      )
-      .map((model: any): SupportedModel => ({
-        id: model.name.replace('models/', ''), // Remove 'models/' prefix for SDK compatibility
-        name: model.displayName,
-        description: model.description,
-        supportsSearch: model.supportedTools?.includes('google_search_retrieval') ?? false
-      }))
-      .sort((a: SupportedModel, b: SupportedModel) => {
-          if (a.name.includes('Pro') && !b.name.includes('Pro')) return -1;
-          if (!a.name.includes('Pro') && b.name.includes('Pro')) return 1;
-          if (a.name.includes('Flash') && !b.name.includes('Flash')) return -1;
-          if (!a.name.includes('Flash') && b.name.includes('Flash')) return 1;
-          return b.id.localeCompare(a.id);
-      });
-      
-    return processedModels;
-
-  } catch (error) {
-    console.error("Error listing available Gemini models:", error);
-    throw error;
-  }
-}
 
 function formatHistoryForPrompt(discussion: DiscussionMessage[], maxTurns = 10): string {
   return discussion
@@ -84,10 +32,10 @@ export async function generateExpertResponse(
   numThoughts: number,
   memoryContext: string[],
   modelId: string,
-  modelSupportsSearch: boolean,
   emulateExpertAs?: ExpertRole,
   uploadedImageFile?: UploadedFile | null,
-  initialContext?: string | null
+  initialContext?: string | null,
+  assignedTasksContext?: string | null
 ): Promise<GeminiResponseJson> {
   
   if (useAgileBloomStore.getState().isQuotaExceeded) {
@@ -121,6 +69,10 @@ export async function generateExpertResponse(
   const additionalContextSection = (initialContext && initialContext.trim() !== '')
     ? `\n--- Start of Additional Context ---\nThis initial context was provided by the user to set the stage for the entire discussion:\n\n${initialContext.trim()}\n\n--- End of Additional Context ---\n`
     : "";
+  
+  const assignedTasksSection = (assignedTasksContext && assignedTasksContext.trim() !== '')
+    ? `\n--- Start of Your Assigned Tasks ---\nThis is a list of tasks currently assigned to you. When responding to commands like /show-work, please focus your response on these tasks.\n\n${assignedTasksContext.trim()}\n--- End of Your Assigned Tasks ---\n`
+    : "";
 
   const systemPromptText = INITIAL_SYSTEM_PROMPT_TEMPLATE
     .replace('{input_topic}', currentTopic || "No topic set yet. Await user to set a topic with /topic command.")
@@ -130,7 +82,8 @@ export async function generateExpertResponse(
     .replace('{{response_persona_instruction}}', responsePersonaInstruction)
     .replace('{{specific_task_instructions}}', specificTaskInstructions)
     .replace('{persistent_memory_context}', formattedMemory)
-    .replace('{{additional_context_section}}', additionalContextSection);
+    .replace('{{additional_context_section}}', additionalContextSection)
+    .replace('{{assigned_tasks_section}}', assignedTasksSection);
   
   const contentParts: Part[] = [];
 
@@ -145,6 +98,9 @@ export async function generateExpertResponse(
   
   contentParts.push({ text: currentUserMessageOrCommand || "Please analyze the provided content." });
   
+  const modelInfo = SUPPORTED_MODELS.find(m => m.id === modelId);
+  const useGoogleSearch = currentUserMessageOrCommand.toLowerCase().startsWith("/ask") && (modelInfo?.supportsSearch ?? false);
+
   const apiRequest: GenerateContentParameters = {
     model: modelId,
     contents: { parts: contentParts }, 
@@ -152,8 +108,6 @@ export async function generateExpertResponse(
       systemInstruction: systemPromptText, 
     },
   };
-
-  const useGoogleSearch = currentUserMessageOrCommand.toLowerCase().startsWith("/ask") && modelSupportsSearch;
 
   if (useGoogleSearch) {
     if (!apiRequest.config) apiRequest.config = {}; 

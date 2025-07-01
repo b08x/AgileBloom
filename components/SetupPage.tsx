@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
-import { BrainCircuit, MessageSquareText, Play, Cpu, SearchCheck, Loader, AlertTriangle, ShieldAlert } from 'lucide-react';
+import React, { useState } from 'react';
+import { BrainCircuit, MessageSquareText, Play, Cpu, SearchCheck, ShieldAlert } from 'lucide-react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
-import { listAvailableModels } from '../services/geminiService';
-import { FALLBACK_MODELS } from '../constants';
+import { SUPPORTED_MODELS } from '../constants';
 import { SupportedModel } from '../types';
 
 interface SetupPageProps {
@@ -15,53 +14,12 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [context, setContext] = useState('');
   
   const {
-    availableModels,
-    isModelsLoading,
-    modelsError,
     selectedModelId,
-    setAvailableModels,
-    setIsModelsLoading,
-    setModelsError,
     setSelectedModelId,
     isQuotaExceeded,
   } = useAgileBloomStore();
 
-  const isButtonDisabled = topic.trim() === '' || isModelsLoading || isQuotaExceeded;
-
-  useEffect(() => {
-    const fetchModels = async () => {
-      if (availableModels.length > 0 || isQuotaExceeded) {
-        setIsModelsLoading(false);
-        return;
-      }
-      setIsModelsLoading(true);
-      try {
-        const models = await listAvailableModels();
-        if (models.length > 0) {
-          setAvailableModels(models);
-          if (!models.some(m => m.id === selectedModelId)) {
-            setSelectedModelId(models[0].id);
-          }
-          setModelsError(null);
-        } else {
-          throw new Error("API returned no compatible models.");
-        }
-      } catch (error) {
-        console.error("Failed to fetch models, using fallback list.", error);
-        const errorMessage = error instanceof Error && error.message.toLowerCase().includes('quota')
-            ? "API quota exceeded. Cannot fetch models."
-            : "Couldn't fetch latest models. Using a default list.";
-        setModelsError(errorMessage);
-        setAvailableModels(FALLBACK_MODELS);
-        setSelectedModelId(FALLBACK_MODELS[0].id);
-      } finally {
-        setIsModelsLoading(false);
-      }
-    };
-
-    fetchModels();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  const isButtonDisabled = topic.trim() === '' || isQuotaExceeded;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,56 +89,43 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
               <Cpu className="mr-3 text-purple-400" size={24} />
               Select AI Model
             </label>
-            {modelsError && !isQuotaExceeded && (
-              <div className="flex items-center p-3 mb-3 text-sm text-yellow-200 bg-yellow-800/40 border border-yellow-700 rounded-lg">
-                <AlertTriangle size={20} className="mr-3 flex-shrink-0" />
-                <span>{modelsError}</span>
-              </div>
-            )}
             <div role="radiogroup" aria-labelledby="model-selection-label" className="space-y-3">
-              {isModelsLoading ? (
-                <div className="flex items-center justify-center p-8 bg-gray-800/50 rounded-lg">
-                  <Loader size={24} className="animate-spin text-purple-400" />
-                  <span className="ml-3 text-gray-300">Fetching latest models...</span>
-                </div>
-              ) : (
-                availableModels.map((model: SupportedModel) => (
-                  <label
-                    key={model.id}
-                    htmlFor={model.id}
-                    className={`flex items-center p-4 rounded-lg border-2 transition-all ${
-                      isQuotaExceeded ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                    } ${
-                      selectedModelId === model.id
-                        ? 'bg-purple-600/30 border-purple-500 ring-2 ring-purple-500'
-                        : 'bg-gray-800/50 border-gray-700 hover:border-purple-600/50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      id={model.id}
-                      name="model"
-                      value={model.id}
-                      checked={selectedModelId === model.id}
-                      onChange={(e) => setSelectedModelId(e.target.value)}
-                      className="h-5 w-5 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500 disabled:cursor-not-allowed"
-                      disabled={isQuotaExceeded}
-                    />
-                    <div className="ml-4 flex-grow">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-gray-100">{model.name}</span>
-                        {model.supportsSearch && (
-                          <span className="flex items-center text-xs text-green-300 bg-green-900/50 px-2 py-0.5 rounded-full">
-                            <SearchCheck size={12} className="mr-1" />
-                            Google Search
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-400 mt-1">{model.description}</p>
+              {SUPPORTED_MODELS.map((model: SupportedModel) => (
+                <label
+                  key={model.id}
+                  htmlFor={model.id}
+                  className={`flex items-center p-4 rounded-lg border-2 transition-all ${
+                    isQuotaExceeded ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                  } ${
+                    selectedModelId === model.id
+                      ? 'bg-purple-600/30 border-purple-500 ring-2 ring-purple-500'
+                      : 'bg-gray-800/50 border-gray-700 hover:border-purple-600/50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    id={model.id}
+                    name="model"
+                    value={model.id}
+                    checked={selectedModelId === model.id}
+                    onChange={(e) => setSelectedModelId(e.target.value)}
+                    className="h-5 w-5 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500 disabled:cursor-not-allowed"
+                    disabled={isQuotaExceeded}
+                  />
+                  <div className="ml-4 flex-grow">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-100">{model.name}</span>
+                      {model.supportsSearch && (
+                        <span className="flex items-center text-xs text-green-300 bg-green-900/50 px-2 py-0.5 rounded-full">
+                          <SearchCheck size={12} className="mr-1" />
+                          Google Search
+                        </span>
+                      )}
                     </div>
-                  </label>
-                ))
-              )}
+                    <p className="text-sm text-gray-400 mt-1">{model.description}</p>
+                  </div>
+                </label>
+              ))}
             </div>
           </div>
 

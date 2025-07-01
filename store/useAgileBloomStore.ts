@@ -1,7 +1,7 @@
 
 import {create} from 'zustand';
 import { DiscussionMessage, ExpertRole, UploadedFile, TrackedQuestion, QuestionStatus, TrackedTask, TaskStatus, Expert, TrackedStory, StoryStatus, SupportedModel } from '../types';
-import { EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS } from '../constants';
+import { EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS, SUPPORTED_MODELS } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AgileBloomState {
@@ -25,9 +25,6 @@ interface AgileBloomState {
   autoModeDelaySeconds: number;
   
   selectedModelId: string;
-  availableModels: SupportedModel[];
-  isModelsLoading: boolean;
-  modelsError: string | null;
 
   isQuotaExceeded: boolean;
 
@@ -68,9 +65,6 @@ interface AgileBloomState {
   importChatSession: (importedMessages: DiscussionMessage[]) => void;
   
   setSelectedModelId: (modelId: string) => void;
-  setAvailableModels: (models: SupportedModel[]) => void;
-  setIsModelsLoading: (loading: boolean) => void;
-  setModelsError: (error: string | null) => void;
 
   setQuotaExceeded: (isExceeded: boolean) => void;
 }
@@ -92,10 +86,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   trackedStories: [],
   isAutoModeEnabled: false,
   autoModeDelaySeconds: DEFAULT_AUTO_MODE_DELAY_SECONDS,
-  selectedModelId: 'gemini-2.5-flash-preview-04-17', // A safe, hardcoded default
-  availableModels: [],
-  isModelsLoading: true,
-  modelsError: null,
+  selectedModelId: SUPPORTED_MODELS[0]?.id || 'gemini-2.5-flash-preview-04-17',
   isQuotaExceeded: false,
 
   setTopic: (topic) => set({ topic, error: null }),
@@ -266,9 +257,6 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   setAutoModeDelaySeconds: (seconds: number) => set({ autoModeDelaySeconds: seconds }),
   
   setSelectedModelId: (modelId: string) => set({ selectedModelId: modelId }),
-  setAvailableModels: (models) => set({ availableModels: models }),
-  setIsModelsLoading: (loading) => set({ isModelsLoading: loading }),
-  setModelsError: (error) => set({ modelsError: error }),
 
   setQuotaExceeded: (isExceeded) => set({ isQuotaExceeded: isExceeded, isLoading: false }),
 

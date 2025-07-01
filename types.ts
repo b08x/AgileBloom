@@ -1,3 +1,4 @@
+
 export enum ExpertRole {
   System = "System",
   User = "User",
@@ -71,6 +72,7 @@ export interface CommandHandlerResult {
   targetExpert?: ExpertRole; 
   newTopic?: string; 
   errorMessage?: string; 
+  assignedTasksContext?: string;
 }
 
 export interface UploadedFile {

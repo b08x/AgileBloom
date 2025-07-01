@@ -1,4 +1,5 @@
 
+
 import { Expert, ExpertRole, Command, SupportedModel } from './types';
 
 export const EXPERTS: Record<ExpertRole, Expert> = {
@@ -10,12 +11,12 @@ export const EXPERTS: Record<ExpertRole, Expert> = {
   [ExpertRole.ScrumLeader]: { name: ExpertRole.ScrumLeader, emoji: "🤔", description: "Manages the product backlog and time-boxing.", bgColor: "bg-indigo-600", textColor: "text-white" },
 };
 
-export const FALLBACK_MODELS: SupportedModel[] = [
-    { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash (Default)', description: 'The previous default model. A good balance of speed and intelligence for general tasks.', supportsSearch: true },
+export const SUPPORTED_MODELS: SupportedModel[] = [
     { id: 'gemini-2.5-pro-preview-06-05', name: 'Gemini 2.5 Pro (Preview)', description: 'The most capable model, ideal for complex reasoning and creative tasks.', supportsSearch: true },
     { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash (Newer)', description: 'A newer, fast and versatile model suitable for a wide range of applications.', supportsSearch: true },
     { id: 'gemini-2.5-flash-lite-preview-06-17', name: 'Gemini 2.5 Flash Lite', description: 'A lightweight and extremely fast model, great for rapid responses.', supportsSearch: true },
-    { id: 'gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', description: 'A fast and cost-effective model from the previous generation.', supportsSearch: false },
+    { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash (Legacy)', description: 'The previous default model. A good balance of speed and intelligence for general tasks.', supportsSearch: true },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'A fast and efficient model for general tasks.', supportsSearch: false },
 ];
 
 export const AVAILABLE_COMMANDS: Command[] = [
@@ -25,7 +26,7 @@ export const AVAILABLE_COMMANDS: Command[] = [
   { name: "/insight", arguments: "{insight_message}", description: "Share an insight. Experts will discuss its implications.", example: "/insight I noticed a pattern in user feedback." },
   { name: "/direction", arguments: "{directive_message}", description: "Provide a directive. Experts will acknowledge and discuss.", example: "/direction We need to finalize the MVP scope by EOD." },
   { name: "/dataset", arguments: "{link_or_data_description}", description: "Provide data. Experts will analyze/comment. You can also upload image, .txt or .md files using the attachment button.", example: "/dataset Market research report: www.example.com/report.pdf" },
-  { name: "/show-work", arguments: "{expert_name}", description: "Ask a specific expert to show their work.", example: "/show-work Artist" },
+  { name: "/show-work", arguments: "{expert_name}", description: "Ask a specific expert to show their work. The expert will be aware of tasks assigned to them. This can also be triggered from the 'Tasks' sidebar for in-progress items.", example: "/show-work Artist" },
   { name: "/debug", arguments: "{error_message_or_backtrace}", description: "Present an issue for debugging. Experts will analyze.", example: "/debug The login page is throwing a 500 error." },
   { name: "/game", arguments: "{expert1}, {expert2}, {thought}", description: "Simulate a 'twenty questions' style game. Experts will react.", example: "/game Engineer, Linguist, The future of AI" },
   { name: "/continue", arguments: "", description: "Prompt experts to continue the discussion or provide their next thoughts/actions based on the current context. Can be triggered automatically in Auto Mode.", example: "/continue" },
@@ -162,6 +163,7 @@ If the user enables "Auto Mode", the system may automatically prompt the experts
 The user can also manage a list of actionable tasks and user stories using interactive sidebars.
 {{emulation_instructions}}
 {{specific_task_instructions}}
+{{assigned_tasks_section}}
 
 Experts:
 - Engineer (👨‍💻): Creative programmer (Bash, Python, Ansible).
@@ -197,14 +199,14 @@ User Commands & Expected AI Behavior (Respond as the emulated expert for your tu
 - /ask {message}: Provide expert answer. If an image/text file was uploaded with the question, analyze it. If search used, synthesize info. Your "thoughts" will be tracked.
 - /suggest {message}: React to suggestion, considering any accompanying uploaded file. Your "thoughts" will be tracked.
 - /insight {message}: Discuss insight implications, considering any accompanying file. Your "thoughts" will be tracked.
-- /direction {message}: Acknowledge and discuss directive. Consider adding key directives to \\\`memoryEntry\\\`. Your "thoughts" will be tracked.
+- /direction {message}: Acknowledge and discuss directive. Consider adding key directives to \`memoryEntry\`. Your "thoughts" will be tracked.
 - /dataset {link_or_data_description_or_uploaded_file}: Acknowledge and incorporate/comment on the data. If a file was uploaded (image, .txt, or .md), analyze its content. Your "thoughts" will be tracked.
 - /show-work {expert_name}: If you are {expert_name}, display work. Format scripts/code with markdown in 'work' field.
 - /debug {message}: Analyze issue. Engineer might lead. Any uploaded error logs (as .txt or .md) should be examined. Your "thoughts" will be tracked.
 - /game {expert1}, {expert2}, {thought}: React to game setup/move. Your "thoughts" will be tracked.
 - /continue: If it's your turn, provide next thought/action based on the current context and conversation history. Your "thoughts" will be tracked. This may be triggered automatically by the system in Auto Mode.
-- /backlog: Scrum Leader performs FISH-Scrum analysis on {input_topic} (potentially informed by uploaded context). Place in 'work' field. Consider \\\`memoryEntry\\\`.
-- /summary: Scrum Leader provides summary/burn-down in 'work' field. Consider \\\`memoryEntry\\\`.
+- /backlog: Scrum Leader performs FISH-Scrum analysis on {input_topic} (potentially informed by uploaded context). Place in 'work' field. Consider \`memoryEntry\`.
+- /summary: Scrum Leader provides summary/burn-down in 'work' field. Consider \`memoryEntry\`.
 - /questions ...: The system manages this via an interactive sidebar. The user may trigger discussions on specific questions from there.
 - /stories [filter:open|addressing|all]: (Scrum Leader) Review the provided list of questions (filtered by status, default 'open'). Generate user stories based on them. Format as a markdown table in the 'work' field with columns: "ID" (use short ID from question), "User Story" (e.g., "As a [user type], I want [action] so that [benefit]"), "Benefit/Value", and "Initial Acceptance Criteria". The system will parse this table and add the stories to the 'Stories' sidebar tracker.
 - /help: Handled by system.
@@ -217,12 +219,12 @@ Response Instructions:
 1. Current topic: {input_topic}.
 2. {{response_persona_instruction}}
 3. If a regular turn, provide main message and {num_thoughts} "thoughts". These "thoughts" (especially questions or key points for discussion) are important and will be logged by the system for the user.
-4. **Action Generation**: If asked to generate tasks or stories based on a discussion (e.g., when a question is marked 'Addressed'), your primary output should be in the \\\`tasks\\\` and/or \\\`stories\\\` array fields of your JSON response. Provide a brief summary in the main \\\`message\\\` field.
-   - For tasks, use this format in the array: \\\`{"description": "A clear, actionable task", "assignedTo": "Engineer"}\\\`
-   - For stories, use this format in the array: \\\`{"userStory": "As a user, I want to...", "benefit": "So that I can achieve...", "acceptanceCriteria": ["Criterion 1", "Criterion 2"]}\\\`
-5. **Memory Contribution**: If your response establishes a key fact, decision, or summary (especially from Scrum Leader), include a concise version in \\\`memoryEntry\\\`.
+4. **Action Generation**: If asked to generate tasks or stories based on a discussion (e.g., when a question is marked 'Addressed'), your primary output should be in the \`tasks\` and/or \`stories\` array fields of your JSON response. Provide a brief summary in the main \`message\` field.
+   - For tasks, use this format in the array: \`{"description": "A clear, actionable task", "assignedTo": "Engineer"}\`
+   - For stories, use this format in the array: \`{"userStory": "As a user, I want to...", "benefit": "So that I can achieve...", "acceptanceCriteria": ["Criterion 1", "Criterion 2"]}\`
+5. **Memory Contribution**: If your response establishes a key fact, decision, or summary (especially from Scrum Leader), include a concise version in \`memoryEntry\`.
 6. Your entire response MUST be a single, valid JSON object. Do NOT add any text outside this JSON object. Example:
-   \\\`{"expert": "Engineer", "emoji": "👨‍💻", "message": "Main textual response...", "thoughts": ["Thought 1"], "work": null, "isCommandResponse": true, "memoryEntry": "Key takeaway", "tasks": [], "stories": []}\\\`
+   \`{"expert": "Engineer", "emoji": "👨‍💻", "message": "Main textual response...", "thoughts": ["Thought 1"], "work": null, "isCommandResponse": true, "memoryEntry": "Key takeaway", "tasks": [], "stories": []}\`
    - "expert" MUST be your emulated expert role name.
    - "emoji" MUST match your emulated expert's emoji.
    - "message" is your primary textual response. If an image was part of the input, your message should reflect your analysis of it.
@@ -234,4 +236,19 @@ Response Instructions:
    IMPORTANT: All string values within this JSON (especially 'message', 'thoughts' items, and 'work') MUST be valid JSON strings. This means newlines (like '\\n'), tabs (like '\\t'), quotes (like '\\"'), backslashes (like '\\\\'), and other control characters MUST be properly escaped.
 If no topic is active, Scrum Leader might prompt for a topic.
 Ensure your response is concise and adheres to your emulated persona.
+`;
+
+export const GENERATE_TASKS_FROM_CONTEXT_PROMPT = `
+**Backlog Generation Request**
+
+As the Scrum Leader, your task is to perform a comprehensive review of the entire conversation history provided. Your goal is to identify and generate a complete list of actionable tasks required to address the project's goals as discussed.
+
+1.  **Analyze Context:** Read through the entire discussion, paying close attention to problems, proposed solutions, feature requests, and technical requirements.
+2.  **Extract Tasks:** Formulate a list of concrete, actionable tasks. Each task should be a distinct piece of work. For example: "Implement user authentication endpoint", "Design the landing page mockup", "Set up CI/CD pipeline".
+3.  **Assign Experts (Optional):** If a task clearly falls into the domain of a specific expert (Engineer, Artist, Linguist), assign it to them.
+4.  **Format Output:** Your entire response MUST be a single JSON object.
+    -   The primary output MUST be in the \`tasks\` array field of your JSON response.
+    -   Format each task like this: \`{"description": "A clear, actionable task", "assignedTo": "Engineer"}\`
+    -   Provide a brief summary of what you've done in the main \`message\` field (e.g., "I've reviewed the discussion and generated a backlog of 8 tasks.").
+    -   If no actionable tasks can be derived from the context, return an empty \`tasks\` array and explain why in the \`message\` field.
 `;

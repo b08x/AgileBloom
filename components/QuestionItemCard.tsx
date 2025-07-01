@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { TrackedQuestion, QuestionStatus } from '../types';
 import { EXPERTS } from '../constants';
-import { CheckCircle2, MessageSquare, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, MessageSquare, XCircle, Loader2, X } from 'lucide-react';
 
 interface QuestionItemCardProps {
   question: TrackedQuestion;
@@ -22,10 +23,27 @@ export const QuestionItemCard: React.FC<QuestionItemCardProps> = ({ question, on
   const config = statusConfig[status] || statusConfig.Open;
   const expertName = EXPERTS[expertRole]?.name || expertRole;
 
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent the main card click from firing
+    onStatusChange(question.id, QuestionStatus.Dismissed);
+  };
+
   return (
     <div
-      className="w-full text-left p-3 bg-gray-900/40 rounded-lg border border-gray-700/60 transition-all duration-200 disabled:opacity-60 flex flex-col justify-between"
+      className="relative w-full text-left p-3 bg-gray-900/40 rounded-lg border border-gray-700/60 transition-all duration-200 disabled:opacity-60 flex flex-col justify-between"
     >
+      {status !== QuestionStatus.Dismissed && (
+         <button
+            onClick={handleDismiss}
+            disabled={isDisabled}
+            className="absolute top-2 right-2 p-1 rounded-full text-gray-500 hover:bg-red-900/50 hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed z-10"
+            title="Dismiss question"
+            aria-label="Dismiss question"
+        >
+            <X size={16} />
+        </button>
+      )}
+
       <button
         onClick={() => onQuestionClick(question.id)}
         disabled={isDisabled}
