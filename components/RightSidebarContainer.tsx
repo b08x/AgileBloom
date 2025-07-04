@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
 import { TrackedQuestionsSidebar } from './TrackedQuestionsSidebar';
-import { TrackedTasksSidebar } from './TrackedTasksSidebar';
 import { TrackedStoriesSidebar } from './TrackedStoriesSidebar';
-import { ListChecks, MessageSquareQuote, BookOpen } from 'lucide-react';
+import { MessageSquareQuote, BookOpen } from 'lucide-react';
 
-type ActiveTab = 'questions' | 'tasks' | 'stories';
+type ActiveTab = 'questions' | 'stories';
 
 export const RightSidebarContainer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('questions');
 
   const tabs: Array<{ id: ActiveTab; label: string; icon: React.ReactNode }> = [
     { id: 'questions', label: 'Questions', icon: <MessageSquareQuote size={18} /> },
-    { id: 'tasks', label: 'Tasks', icon: <ListChecks size={18} /> },
     { id: 'stories', label: 'Stories', icon: <BookOpen size={18} /> },
   ];
 
@@ -38,7 +36,6 @@ export const RightSidebarContainer: React.FC = () => {
       </div>
       <div className="flex-grow overflow-hidden">
         {activeTab === 'questions' && <TrackedQuestionsSidebar />}
-        {activeTab === 'tasks' && <TrackedTasksSidebar />}
         {activeTab === 'stories' && <TrackedStoriesSidebar />}
       </div>
     </div>

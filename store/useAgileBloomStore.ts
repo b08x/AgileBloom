@@ -1,9 +1,8 @@
 
 
-
 import {create} from 'zustand';
-import { DiscussionMessage, ExpertRole, UploadedFile, TrackedQuestion, QuestionStatus, TrackedTask, TaskStatus, Expert, TrackedStory, StoryStatus, SupportedModel } from '../types';
-import { EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS, SUPPORTED_MODELS, API_KEY_ERROR_MESSAGE, MISTRAL_API_KEY_ERROR_MESSAGE } from '../constants';
+import { DiscussionMessage, ExpertRole, UploadedFile, TrackedQuestion, QuestionStatus, TrackedTask, TaskStatus, Expert, TrackedStory, StoryStatus, StoryPriority, AIConfig } from '../types';
+import { EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AgileBloomState {
@@ -12,8 +11,6 @@ interface AgileBloomState {
   isLoading: boolean;
   error: string | null;
   numThoughts: number;
-  apiKeyStatus: 'ok' | 'error' | 'unchecked';
-  mistralApiKeyStatus: 'ok' | 'error' | 'unchecked';
   isHelpModalOpen: boolean;
   userMessageTimestamps: number[];
   isRateLimited: boolean;
@@ -27,7 +24,7 @@ interface AgileBloomState {
   isAutoModeEnabled: boolean;
   autoModeDelaySeconds: number;
   
-  selectedModelId: string;
+  aiConfig: AIConfig | null;
 
   isQuotaExceeded: boolean;
 
@@ -41,7 +38,6 @@ interface AgileBloomState {
   setError: (error: string | null) => void;
   setNumThoughts: (num: number) => void;
   clearChat: () => void;
-  checkApiKeysStatus: () => void;
   toggleHelpModal: () => void;
   addUserMessageTimestamp: (timestamp: number) => void;
   setRateLimitedStatus: (isLimited: boolean) => void;
@@ -61,7 +57,7 @@ interface AgileBloomState {
   clearTrackedTasksByStatus: (status: TaskStatus) => void;
 
   addTrackedStory: (storyData: Omit<TrackedStory, 'id' | 'timestamp' | 'status' | 'topicContext'>) => void;
-  updateTrackedStoryStatus: (storyId: string, status: StoryStatus) => void;
+  updateTrackedStory: (storyId: string, updates: Partial<Omit<TrackedStory, 'id'>>) => void;
   removeTrackedStory: (storyId: string) => void;
   clearAllTrackedStories: () => void;
   clearTrackedStoriesByStatus: (status: StoryStatus) => void;
@@ -70,7 +66,7 @@ interface AgileBloomState {
   setAutoModeDelaySeconds: (seconds: number) => void;
   importChatSession: (importedMessages: DiscussionMessage[]) => void;
   
-  setSelectedModelId: (modelId: string) => void;
+  setAiConfig: (config: AIConfig) => void;
 
   setQuotaExceeded: (isExceeded: boolean) => void;
 
@@ -84,8 +80,6 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   isLoading: false,
   error: null,
   numThoughts: DEFAULT_NUM_THOUGHTS,
-  apiKeyStatus: 'unchecked',
-  mistralApiKeyStatus: 'unchecked',
   isHelpModalOpen: false,
   userMessageTimestamps: [],
   isRateLimited: false,
@@ -96,7 +90,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   trackedStories: [],
   isAutoModeEnabled: false,
   autoModeDelaySeconds: DEFAULT_AUTO_MODE_DELAY_SECONDS,
-  selectedModelId: SUPPORTED_MODELS[0]?.id || 'gemini-2.5-pro-preview-06-05',
+  aiConfig: null,
   isQuotaExceeded: false,
   narrativeSummary: '',
   isSummaryLoading: false,
@@ -148,30 +142,9 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
       autoModeDelaySeconds: DEFAULT_AUTO_MODE_DELAY_SECONDS,
       narrativeSummary: '',
       isSummaryLoading: false,
-      // Note: isQuotaExceeded and API key statuses are NOT reset here intentionally.
+      // Note: isQuotaExceeded and aiConfig are NOT reset here intentionally.
       // They are system-level states that persist until the user refreshes.
     });
-  },
-  checkApiKeysStatus: () => {
-    // Check Gemini Key
-    const geminiKey = process.env.API_KEY;
-    if (typeof geminiKey !== 'string' || geminiKey === "" || geminiKey === "NO_KEY_FOUND") {
-      if (get().apiKeyStatus !== 'error') { 
-        get().addErrorMessage(API_KEY_ERROR_MESSAGE);
-      }
-      set({ apiKeyStatus: 'error' });
-    } else {
-      set({ apiKeyStatus: 'ok' });
-    }
-    
-    // Check Mistral Key
-    const mistralKey = process.env.MISTRAL_API_KEY;
-     if (typeof mistralKey !== 'string' || mistralKey === "" || mistralKey === "NO_KEY_FOUND") {
-      // Don't add a system message for this one unless a mistral model is selected
-      set({ mistralApiKeyStatus: 'error' });
-    } else {
-      set({ mistralApiKeyStatus: 'ok' });
-    }
   },
   toggleHelpModal: () => set((state) => ({ isHelpModalOpen: !state.isHelpModalOpen })),
   addUserMessageTimestamp: (timestamp) => set((state) => ({
@@ -250,19 +223,20 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
         ...storyData,
         id: uuidv4(),
         timestamp: Date.now(),
-        status: StoryStatus.New,
+        status: StoryStatus.Backlog,
+        priority: storyData.priority || 'Medium',
         topicContext: currentTopic,
     };
     set((state) => ({
         trackedStories: [...state.trackedStories, newStory],
     }));
   },
-  updateTrackedStoryStatus: (storyId, status) => {
-      set((state) => ({
-          trackedStories: state.trackedStories.map((story) =>
-              story.id === storyId ? { ...story, status } : story
-          ),
-      }));
+  updateTrackedStory: (storyId, updates) => {
+    set(state => ({
+        trackedStories: state.trackedStories.map(story => 
+            story.id === storyId ? { ...story, ...updates } : story
+        )
+    }));
   },
   removeTrackedStory: (storyId) => {
       set((state) => ({
@@ -280,7 +254,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   toggleAutoMode: () => set((state) => ({ isAutoModeEnabled: !state.isAutoModeEnabled })),
   setAutoModeDelaySeconds: (seconds: number) => set({ autoModeDelaySeconds: seconds }),
   
-  setSelectedModelId: (modelId: string) => set({ selectedModelId: modelId }),
+  setAiConfig: (config) => set({ aiConfig: config }),
 
   setQuotaExceeded: (isExceeded) => set({ isQuotaExceeded: isExceeded, isLoading: false }),
 
@@ -313,7 +287,5 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
     });
   },
 }));
-
-useAgileBloomStore.getState().checkApiKeysStatus();
 
 export default useAgileBloomStore;

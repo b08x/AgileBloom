@@ -1,11 +1,8 @@
 
-
-
-
 import { useCallback, useEffect, useRef } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { getAiResponse } from '../services/aiService';
-import { ExpertRole, GeminiResponseJson, CommandHandlerResult, UploadedFile, SearchCitation, DiscussionMessage, TrackedQuestion, QuestionStatus, TaskStatus, TrackedTask, GeminiGeneratedTask, GeminiGeneratedStory } from '../types';
+import { ExpertRole, GeminiResponseJson, CommandHandlerResult, UploadedFile, SearchCitation, DiscussionMessage, TrackedQuestion, QuestionStatus, TaskStatus, TrackedTask, GeminiGeneratedTask, GeminiGeneratedStory, StoryStatus, StoryPriority } from '../types';
 import { 
     EXPERTS, 
     EXPERT_ROUND_ROBIN_ORDER, 
@@ -14,8 +11,10 @@ import {
     RATE_LIMIT_WINDOW_SECONDS,
     SUPPORTED_IMAGE_MIME_TYPES,
     ID_PREFIX_LENGTH_QUESTIONS,
+    ID_PREFIX_LENGTH_STORIES,
     GENERATE_TASKS_FROM_CONTEXT_PROMPT,
     GENERATE_NARRATIVE_SUMMARY_PROMPT,
+    BREAKDOWN_STORY_PROMPT_TEMPLATE,
 } from '../constants';
 
 
@@ -57,28 +56,6 @@ const parseMarkdownTable = (markdown: string): Array<Record<string, string>> => 
 };
 
 
-function formatTrackedQuestions(questions: TrackedQuestion[], filter: QuestionStatus | 'all'): string {
-  const filteredQuestions = filter === 'all' 
-    ? questions 
-    : questions.filter(q => q.status.toLowerCase() === filter.toLowerCase());
-
-  if (filteredQuestions.length === 0) {
-    return `No questions found for filter: ${filter}.`;
-  }
-
-  let output = `Tracked Discussion Points (${filter}):\n`;
-  output += "-------------------------------------\n";
-  filteredQuestions.forEach(q => {
-    const shortId = q.id.substring(0, ID_PREFIX_LENGTH_QUESTIONS);
-    const expertEmoji = EXPERTS[q.expertRole]?.emoji || '❔';
-    output += `[${shortId}] (${q.status}) ${expertEmoji} ${q.expertRole}: ${q.text}\n`;
-  });
-  output += "-------------------------------------\n";
-  output += "Use '/questions discuss {id_prefix}' or '/questions clear ...'. Update status directly in the sidebar.";
-  return output;
-}
-
-
 export const useAgileBloomChat = () => {
   const {
     topic,
@@ -87,8 +64,6 @@ export const useAgileBloomChat = () => {
     memoryContext,
     isAutoModeEnabled,
     autoModeDelaySeconds,
-    selectedModelId,
-    setTopic,
     addMessage,
     addErrorMessage,
     setLoading,
@@ -105,7 +80,9 @@ export const useAgileBloomChat = () => {
     clearAllTrackedQuestions,    
     clearTrackedQuestionsByStatus,
     addTrackedStory,
+    updateTrackedStory,
     addTrackedTask,
+    updateTrackedTaskStatus,
     toggleAutoMode, // For user interruption of auto mode
     setNarrativeSummary,
     setSummaryLoading,
@@ -115,7 +92,36 @@ export const useAgileBloomChat = () => {
   const autoContinueTimeoutRef = useRef<number | null>(null);
   const lastAutoContinuedMessageIdRef = useRef<string | null>(null);
 
-  const processAndAddAiResponse = useCallback((aiResponse: GeminiResponseJson, emulatedExpertAs?: ExpertRole) => {
+  const handleTaskStatusUpdate = useCallback((taskId: string, newStatus: TaskStatus) => {
+    updateTrackedTaskStatus(taskId, newStatus);
+    
+    // Check if we need to update the parent story's status
+    const { trackedTasks, trackedStories } = useAgileBloomStore.getState();
+    const updatedTask = trackedTasks.find(t => t.id === taskId);
+    if (!updatedTask?.storyId) return;
+
+    const parentStory = trackedStories.find(s => s.id === updatedTask.storyId);
+    if (!parentStory) return;
+
+    const tasksForStory = trackedTasks.filter(t => t.storyId === parentStory.id);
+
+    if (newStatus === TaskStatus.InProgress && parentStory.status === StoryStatus.SelectedForSprint) {
+        updateTrackedStory(parentStory.id, { status: StoryStatus.InProgress });
+    } else if (newStatus === TaskStatus.Done) {
+        const allTasksDone = tasksForStory.every(t => t.status === TaskStatus.Done);
+        if (allTasksDone) {
+            updateTrackedStory(parentStory.id, { status: StoryStatus.Done });
+        }
+    }
+  }, [updateTrackedTaskStatus, updateTrackedStory]);
+
+  const processAndAddAiResponse = useCallback((aiResponse: GeminiResponseJson, emulatedExpertAs?: ExpertRole, associatedStoryId?: string) => {
+    if (!aiResponse || !aiResponse.expert) {
+        console.error("Received an invalid or incomplete AI response:", aiResponse);
+        addErrorMessage("Received a malformed response from the AI. Check the console for details.");
+        return;
+    }
+      
     let expertNameKey = Object.keys(EXPERTS).find(
       key => key.toLowerCase() === aiResponse.expert.toString().toLowerCase()
     ) as ExpertRole | undefined;
@@ -190,6 +196,7 @@ export const useAgileBloomChat = () => {
                     benefit: benefit,
                     acceptanceCriteria: acceptanceCriteriaRaw.split('\n').map((ac:string) => ac.trim()).filter(Boolean),
                     createdBy: 'AI',
+                    priority: 'Medium', // Default priority for generated stories
                     fromQuestionId: fromQuestionId
                 });
             });
@@ -208,13 +215,16 @@ export const useAgileBloomChat = () => {
 
     if (aiResponse.tasks && Array.isArray(aiResponse.tasks)) {
         aiResponse.tasks.forEach((task: GeminiGeneratedTask) => {
-            if (task.description) {
+            if (task.description && typeof task.description === 'string') {
                 addTrackedTask({
                     description: task.description,
                     createdBy: 'AI',
-                    assignedTo: task.assignedTo
+                    assignedTo: task.assignedTo,
+                    storyId: associatedStoryId,
                 });
                 tasksGenerated++;
+            } else {
+                console.warn("AI returned a task with an invalid description:", task);
             }
         });
     }
@@ -227,6 +237,8 @@ export const useAgileBloomChat = () => {
                     benefit: story.benefit,
                     acceptanceCriteria: story.acceptanceCriteria,
                     createdBy: 'AI',
+                    priority: story.priority || 'Medium',
+                    sprintPoints: story.sprintPoints,
                 });
                 storiesGenerated++;
             }
@@ -237,6 +249,9 @@ export const useAgileBloomChat = () => {
         let summaryMessage = "Based on the recent discussion, I've generated";
         if (tasksGenerated > 0) {
             summaryMessage += ` ${tasksGenerated} task${tasksGenerated > 1 ? 's' : ''}`;
+            if (associatedStoryId) {
+                summaryMessage += ` for story #${associatedStoryId.substring(0,6)}`;
+            }
         }
         if (storiesGenerated > 0) {
             summaryMessage += `${tasksGenerated > 0 ? ' and' : ''} ${storiesGenerated} user stor${storiesGenerated > 1 ? 'ies' : 'y'}`;
@@ -253,7 +268,7 @@ export const useAgileBloomChat = () => {
   }, [addMessage, addErrorMessage, addMemoryEntry, addTrackedQuestion, addTrackedStory, addTrackedTask]);
 
   const updateNarrativeSummary = useCallback(async () => {
-    const { discussion, topic, memoryContext, selectedModelId } = useAgileBloomStore.getState();
+    const { discussion, topic, memoryContext } = useAgileBloomStore.getState();
   
     if (discussion.length < 2) return;
   
@@ -265,7 +280,6 @@ export const useAgileBloomChat = () => {
         discussion,
         0, // No thoughts needed for a summary
         memoryContext,
-        selectedModelId,
         ExpertRole.ScrumLeader
       );
       if (aiResponse.message) {
@@ -277,43 +291,48 @@ export const useAgileBloomChat = () => {
     } finally {
       setSummaryLoading(false);
     }
-  }, [selectedModelId, setNarrativeSummary, setSummaryLoading]);
+  }, [setNarrativeSummary, setSummaryLoading]);
 
   const updateQuestionStatusAndPotentiallyGenerateActions = useCallback(async (questionId: string, newStatus: QuestionStatus) => {
-    // Get latest state directly
-    const { trackedQuestions, discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading, selectedModelId } = useAgileBloomStore.getState();
+    const { trackedQuestions, discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading } = useAgileBloomStore.getState();
     
-    // Optimistically update the UI
     updateTrackedQuestionStatus(questionId, newStatus);
 
     if (newStatus !== QuestionStatus.Addressed) {
-        return; // Only trigger AI on 'Addressed'
+        return; 
     }
 
     const question = trackedQuestions.find(q => q.id === questionId);
     if (!question) {
-        addErrorMessage(`Could not find question with ID ${questionId} to generate actions from.`);
+        addErrorMessage(`Could not find question with ID ${questionId} to generate stories from.`);
         return;
     }
 
     setLoading(true);
+    addMessage({
+      expertName: ExpertRole.System,
+      text: `Question "${question.text.substring(0, 50)}..." was marked 'Addressed'. Generating user stories...`,
+      isCommandResponse: true,
+    });
+
     try {
-        const generationPrompt = `**Action Generation Request**
+        const generationPrompt = `**User Story Generation Request**
 
 The following discussion point has now been marked as 'Addressed':
 - **Question:** "${question.text}"
 - **Raised by:** ${question.expertRole}
 
-Based on the provided conversation history and this resolved question, your task is to act as the Scrum Leader and generate concrete, actionable outcomes.
+Based on the provided conversation history and this resolved question, your task is to act as the Scrum Leader. Your goal is to convert the resolution of this question into one or more formal User Stories for the product backlog.
 
-1.  **Analyze:** Review the conversation history with the goal of extracting potential tasks or user stories related to the resolved question.
-2.  **Generate:** Create a list of tasks and/or user stories.
-    -   **Tasks** should be specific actions someone can take (e.g., "Research library X for feature Y").
-    -   **User Stories** should follow the format "As a [persona], I want [action], so that [benefit]."
+1.  **Analyze:** Review the conversation that led to this question being addressed. What needs, features, or actions were uncovered?
+2.  **Generate User Stories:** Create a list of user stories.
+    -   Follow the format: "As a [persona], I want [action], so that [benefit]."
+    -   Estimate \`sprintPoints\` (e.g., 1, 2, 3, 5, 8) if possible.
+    -   Set a default \`priority\` of "Medium".
 3.  **Format Output:** Your entire response MUST be a single JSON object.
-    -   Populate the \`tasks\` and/or \`stories\` arrays with your generated items.
-    -   Provide a brief summary in the \`message\` field (e.g., "I've created 2 tasks and 1 user story from that discussion.").
-    -   If, after careful review, NO actions are necessary, you MUST return empty arrays for \`tasks\` and \`stories\` and explain why in the \`message\` field (e.g., "Acknowledged. This point was informational and requires no further action.").
+    -   Populate the \`stories\` array with your generated items.
+    -   Provide a brief summary in the \`message\` field (e.g., "From that discussion, I've created 2 user stories for our backlog.").
+    -   If NO user story is necessary, return an empty \`stories\` array and explain why in the \`message\` field (e.g., "Acknowledged. This point was informational and requires no further action or backlog items.").
 `;
 
         const aiResponse = await getAiResponse(
@@ -322,24 +341,23 @@ Based on the provided conversation history and this resolved question, your task
             discussion,
             numThoughts,
             memoryContext,
-            selectedModelId,
-            ExpertRole.ScrumLeader // Scrum Leader is best for this
+            ExpertRole.ScrumLeader
         );
 
         processAndAddAiResponse(aiResponse, ExpertRole.ScrumLeader);
 
     } catch (error) {
-        console.error("Error generating follow-up actions:", error);
-        const message = error instanceof Error ? error.message : "An error occurred while generating follow-up actions.";
+        console.error("Error generating user stories:", error);
+        const message = error instanceof Error ? error.message : "An error occurred while generating user stories.";
         addErrorMessage(message);
     } finally {
         setLoading(false);
     }
-  }, [updateTrackedQuestionStatus, processAndAddAiResponse, selectedModelId]);
+  }, [updateTrackedQuestionStatus, processAndAddAiResponse]);
 
   const generateTasksFromContext = useCallback(async () => {
     // Get latest state directly
-    const { discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading, selectedModelId } = useAgileBloomStore.getState();
+    const { discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading } = useAgileBloomStore.getState();
 
     if (discussion.length < 2) { // Need more than just system messages
         addErrorMessage("Not enough discussion context to generate tasks. Please continue the conversation.");
@@ -347,6 +365,7 @@ Based on the provided conversation history and this resolved question, your task
     }
     
     setLoading(true);
+    addMessage({ expertName: ExpertRole.System, text: 'Scrum Leader is reviewing the discussion to generate a task backlog...' });
     try {
         const aiResponse = await getAiResponse(
             topic,
@@ -354,7 +373,6 @@ Based on the provided conversation history and this resolved question, your task
             discussion,
             numThoughts,
             memoryContext,
-            selectedModelId,
             ExpertRole.ScrumLeader // Scrum Leader is best for this
         );
 
@@ -367,7 +385,7 @@ Based on the provided conversation history and this resolved question, your task
     } finally {
         setLoading(false);
     }
-  }, [processAndAddAiResponse, selectedModelId]);
+  }, [processAndAddAiResponse]);
 
 
   const checkAndApplyRateLimit = (): boolean => {
@@ -463,63 +481,84 @@ Based on the provided conversation history and this resolved question, your task
         return { userMessageText, aiInstructionText, action: 'single_ai_response', targetExpert: EXPERTS[expertRole].name, assignedTasksContext };
       }
       
+      case "/analyze": {
+        const itemIdPrefix = args[0];
+        if (!itemIdPrefix) return { userMessageText, action: 'error', errorMessage: "Please provide the ID prefix of the story or task to analyze. e.g., /analyze 1a2b3c" };
+
+        const { trackedStories, trackedTasks } = useAgileBloomStore.getState();
+        const storyToAnalyze = trackedStories.find(s => s.id.startsWith(itemIdPrefix));
+        const taskToAnalyze = trackedTasks.find(t => t.id.startsWith(itemIdPrefix));
+
+        if (!storyToAnalyze && !taskToAnalyze) {
+            return { userMessageText, action: 'error', errorMessage: `Story or task with ID prefix '${itemIdPrefix}' not found.` };
+        }
+        
+        let itemDescriptionForPrompt: string;
+        if (storyToAnalyze) {
+            itemDescriptionForPrompt = `Type: User Story\nID: ${storyToAnalyze.id}\nStory: "${storyToAnalyze.userStory}"\nBenefit: "${storyToAnalyze.benefit}"\nAcceptance Criteria:\n- ${storyToAnalyze.acceptanceCriteria.join('\n- ')}`;
+        } else { // taskToAnalyze must be defined here
+            itemDescriptionForPrompt = `Type: Task\nID: ${taskToAnalyze!.id}\nDescription: "${taskToAnalyze!.description}"\nStatus: ${taskToAnalyze!.status}${taskToAnalyze!.storyId ? `\nParent Story ID: ${taskToAnalyze!.storyId}` : ''}`;
+        }
+        
+        const analysisPrompt = `Please perform a FISH analysis on the following item. The analysis framework is provided in your system instructions. Place the full analysis in the 'work' field of your JSON response, and provide a brief summary in the 'message' field.\n\nItem for Analysis:\n---\n${itemDescriptionForPrompt}\n---`;
+
+        return { userMessageText, aiInstructionText: analysisPrompt, action: 'single_ai_response', targetExpert: ExpertRole.ScrumLeader };
+      }
+
       case "/backlog":
       case "/summary":
         if (!useAgileBloomStore.getState().topic) {
             return { userMessageText, action: 'error', errorMessage: "No active discussion. Please refresh the page to start a new one." };
         }
         return { userMessageText, aiInstructionText, action: 'single_ai_response', targetExpert: ExpertRole.ScrumLeader };
-      
-      case "/questions":
-        const arg0ForQSubCommand = args[0];
-        const qSubCommand = typeof arg0ForQSubCommand === 'string' ? arg0ForQSubCommand.toLowerCase() : undefined;
-        const trackedQuestions = useAgileBloomStore.getState().trackedQuestions;
-        
-        switch (qSubCommand) {
-          case "list":
-            const arg1ForListFilter = args[1];
-            const filterArg = (typeof arg1ForListFilter === 'string' ? arg1ForListFilter.toLowerCase() : undefined) || 'open';
-            let statusFilter: QuestionStatus | 'all' = 'all';
-            if (Object.values(QuestionStatus).map(s => s.toLowerCase()).includes(filterArg)) {
-                statusFilter = filterArg as QuestionStatus;
-            } else if (filterArg === 'all') {
-                statusFilter = 'all';
-            } else if (filterArg !== 'open') { 
-                 return { userMessageText, action: 'error', errorMessage: `Invalid filter for /questions list. Use 'open', 'addressing', 'addressed', 'dismissed', or 'all'.`};
-            }
-             if (filterArg === 'open' && args.length === 1) statusFilter = QuestionStatus.Open;
 
-            systemMessageContent = formatTrackedQuestions(trackedQuestions, statusFilter);
-            return { userMessageText, action: 'local', aiInstructionText: systemMessageContent };
-          
-          case "discuss":
+      case "/sprint-planning": {
+         const { trackedStories } = useAgileBloomStore.getState();
+         const readyStories = trackedStories.filter(s => s.status === StoryStatus.Backlog || s.status === StoryStatus.SelectedForSprint);
+         if (readyStories.length === 0) {
+            return { userMessageText, action: 'local', aiInstructionText: "There are no stories in the backlog to plan with. Generate some stories from addressed questions first." };
+         }
+         const planningPrompt = "Please review the following high-priority user stories from the backlog and recommend a selection to form the current sprint. Explain your reasoning.\n\n" +
+            readyStories.map(s => `- [${s.priority}] Story #${s.id.substring(0,6)}: ${s.userStory}`).join('\n');
+         return { userMessageText, aiInstructionText: planningPrompt, action: 'single_ai_response', targetExpert: ExpertRole.ScrumLeader };
+      }
+      
+      case "/breakdown": {
+        const storyIdPrefix = args[0];
+        if (!storyIdPrefix) return { userMessageText, action: 'error', errorMessage: "Please provide the ID prefix of the story to break down. e.g., /breakdown 1a2b3c" };
+        
+        const { trackedStories } = useAgileBloomStore.getState();
+        const storyToBreakDown = trackedStories.find(s => s.id.startsWith(storyIdPrefix));
+        if (!storyToBreakDown) return { userMessageText, action: 'error', errorMessage: `Story with ID prefix '${storyIdPrefix}' not found.` };
+
+        updateTrackedStory(storyToBreakDown.id, { status: StoryStatus.SelectedForSprint });
+        // The breakdown prompt is handled inside the sendMessage logic now.
+        // We just need to tell it which story to break down.
+        // The command itself will be the AI instruction.
+        return { userMessageText, aiInstructionText: trimmedInput, action: 'round_robin_ai_response' };
+      }
+      
+      case "/questions": {
+        const subCommand = args[0]?.toLowerCase();
+        
+        if (subCommand === 'discuss') {
             const discussIdPrefix = args[1];
             if (!discussIdPrefix) return { userMessageText, action: 'error', errorMessage: "Please provide the ID prefix of the question to discuss." };
+            
+            const trackedQuestions = useAgileBloomStore.getState().trackedQuestions;
             const questionToDiscuss = trackedQuestions.find(q => q.id.startsWith(discussIdPrefix));
             if (!questionToDiscuss) return { userMessageText, action: 'error', errorMessage: `Question with ID prefix '${discussIdPrefix}' not found.` };
             
+            // This is still valid as it can be triggered by a card click
             updateTrackedQuestionStatus(questionToDiscuss.id, QuestionStatus.Addressing);
             const discussionPrompt = `Let's discuss the following point originally raised by ${questionToDiscuss.expertRole} (${questionToDiscuss.expertEmoji}): "${questionToDiscuss.text}". Team, what are your thoughts or answers regarding this?`;
             return { userMessageText, aiInstructionText: discussionPrompt, action: 'round_robin_ai_response'};
-          
-          case "clear":
-            const arg1ForClearFilter = args[1];
-            const clearFilterArg = (typeof arg1ForClearFilter === 'string' ? arg1ForClearFilter.toLowerCase() : undefined) || 'all';
-            if (clearFilterArg === 'all') {
-              clearAllTrackedQuestions();
-              systemMessageContent = "All tracked discussion points have been cleared.";
-            } else if (Object.values(QuestionStatus).map(s => s.toLowerCase()).includes(clearFilterArg)) {
-              const statusToClear = Object.values(QuestionStatus).find(s => s.toLowerCase() === clearFilterArg) as QuestionStatus;
-              clearTrackedQuestionsByStatus(statusToClear);
-              systemMessageContent = `All '${statusToClear}' discussion points have been cleared.`;
-            } else {
-              return { userMessageText, action: 'error', errorMessage: "Invalid filter for /questions clear. Use 'all', 'open', 'addressing', 'addressed', 'dismissed'."};
-            }
-            return { userMessageText, action: 'local', aiInstructionText: systemMessageContent };
-
-          default:
-            return { userMessageText, action: 'error', errorMessage: "Unknown subcommand for /questions. Use: list, discuss, clear. Update status from the sidebar." };
         }
+        
+        // Command is now mostly UI driven.
+        systemMessageContent = "Question management is now primarily handled in the 'Questions' sidebar. You can view questions grouped by expert, select them, and perform bulk actions like marking as 'Addressed' or 'Dismissed'. Clicking on a question card will start a discussion about it.";
+        return { userMessageText, action: 'local', aiInstructionText: systemMessageContent };
+      }
       
       case "/stories":
         const arg0ForStoriesFilter = args[0];
@@ -568,46 +607,34 @@ Based on the provided conversation history and this resolved question, your task
   };
 
   const sendMessage = useCallback(async (rawInputText: string, attachedFile: UploadedFile | null, isAutoTriggered: boolean = false) => {
-    // Get latest state directly inside sendMessage
-    const { topic, numThoughts, memoryContext, selectedModelId } = useAgileBloomStore.getState();
+    const { topic, numThoughts, memoryContext } = useAgileBloomStore.getState();
     let currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion];
     
     let userSubmittedText = rawInputText.trim();
 
-    if (!isAutoTriggered) { // Only apply these checks/actions for non-auto-triggered messages
-      if (!userSubmittedText && !attachedFile) { 
-        return;
-      }
-      if (checkAndApplyRateLimit()) { 
-        return; 
-      }
+    if (!isAutoTriggered) {
+      if (!userSubmittedText && !attachedFile) return;
+      if (checkAndApplyRateLimit()) return; 
       addUserMessageTimestamp(Date.now()); 
     }
       
     let aiInstructionTextForProcessing = userSubmittedText;
-    if (attachedFile && attachedFile.textContent) {
-        // Content already prepended by CommandInput for user-submitted messages
-        // For auto-triggered, attachedFile should be null
+    if (attachedFile?.textContent) {
+        aiInstructionTextForProcessing = `Content of uploaded file "${attachedFile.name}":\n\n${attachedFile.textContent}\n\n---\nUser prompt:\n${userSubmittedText}`;
     } else if (!userSubmittedText && attachedFile?.base64Data && !isAutoTriggered) { 
         aiInstructionTextForProcessing = "Analyze the attached image."; 
     } else if (isAutoTriggered) {
-        aiInstructionTextForProcessing = "/continue"; // Explicitly set for auto-triggered
-        userSubmittedText = "/continue"; // Ensure command handler processes it correctly
+        aiInstructionTextForProcessing = "/continue";
+        userSubmittedText = "/continue";
     }
     
     const commandResult = handleCommandInput(aiInstructionTextForProcessing);
 
     if (commandResult.action === 'no_action' && !attachedFile && !isAutoTriggered) return;
 
-    if (!isAutoTriggered && 
-        commandResult.action !== 'local' && 
-        commandResult.action !== 'error' && // Don't disable if user types invalid command
-        useAgileBloomStore.getState().isAutoModeEnabled) {
-      toggleAutoMode(); // This will set isAutoModeEnabled to false
-      if (autoContinueTimeoutRef.current) {
-        clearTimeout(autoContinueTimeoutRef.current);
-        autoContinueTimeoutRef.current = null;
-      }
+    if (!isAutoTriggered && commandResult.action !== 'local' && commandResult.action !== 'error' && useAgileBloomStore.getState().isAutoModeEnabled) {
+      toggleAutoMode();
+      if (autoContinueTimeoutRef.current) clearTimeout(autoContinueTimeoutRef.current);
       addMessage({expertName: ExpertRole.System, text: "Auto Mode disabled due to user input."});
     }
 
@@ -618,7 +645,7 @@ Based on the provided conversation history and this resolved question, your task
     if (attachedFile && !isAutoTriggered) {
         addMessage({
             expertName: ExpertRole.System,
-            text: `User uploaded "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)}KB). ${attachedFile.textContent ? "Its content is part of the prompt." : ""}`,
+            text: `User uploaded "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)}KB).`,
         });
     }
 
@@ -636,60 +663,74 @@ Based on the provided conversation history and this resolved question, your task
         setLoading(true);
     }
 
-
     if (commandResult.action === 'local') {
-      if (commandResult.userMessageText.startsWith("/help")) {
-        toggleHelpModal();
-      } else if (commandResult.userMessageText.startsWith("/clear")) {
+      if (commandResult.userMessageText.startsWith("/help")) toggleHelpModal();
+      else if (commandResult.userMessageText.startsWith("/clear")) {
         storeClearChat();
         addMessage({expertName: ExpertRole.System, text: "Chat cleared. Please refresh the page to start a new discussion."});
-      } else if (commandResult.userMessageText.startsWith("/questions") && commandResult.aiInstructionText) {
+      } else if (commandResult.aiInstructionText) {
         addMessage({ expertName: ExpertRole.System, text: commandResult.aiInstructionText, isCommandResponse: true });
-      } else if (commandResult.userMessageText.startsWith("/stories") && commandResult.aiInstructionText) {
-         addMessage({ expertName: ExpertRole.System, text: commandResult.aiInstructionText, isCommandResponse: true });
       }
       if (!isAutoTriggered) clearUploadedFile(); 
       setLoading(false); 
       return;
     }
         
-    const imageFileForAi = (attachedFile && attachedFile.base64Data && SUPPORTED_IMAGE_MIME_TYPES.includes(attachedFile.mimeType)) 
-      ? attachedFile 
-      : null;
+    const imageFileForAi = (attachedFile && attachedFile.base64Data && SUPPORTED_IMAGE_MIME_TYPES.includes(attachedFile.mimeType)) ? attachedFile : null;
 
     try {
-      const instructionForAi = commandResult.aiInstructionText || aiInstructionTextForProcessing || "Please respond.";
+      let instructionForAi = commandResult.aiInstructionText || aiInstructionTextForProcessing || "Please respond.";
+      let storyToBreakDownId: string | undefined;
+
+      if (instructionForAi.startsWith("/breakdown")) {
+        const storyIdPrefix = instructionForAi.split(' ')[1];
+        const { trackedStories } = useAgileBloomStore.getState();
+        const story = trackedStories.find(s => s.id.startsWith(storyIdPrefix));
+        if (story) {
+          storyToBreakDownId = story.id;
+          // The actual prompt will be constructed inside the loop for each expert
+        } else {
+           throw new Error(`Story with ID prefix '${storyIdPrefix}' not found for breakdown.`);
+        }
+      }
       
-      currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion]; // Get fresh discussion state
+      currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion];
 
       if (commandResult.action === 'single_ai_response' && commandResult.targetExpert) {
-        const aiResponse = await getAiResponse(
-          topic, 
-          instructionForAi,
-          currentDiscussionForProcessing,
-          numThoughts, 
-          memoryContext,
-          selectedModelId,
-          commandResult.targetExpert,
-          isAutoTriggered ? null : imageFileForAi, // Don't pass image for auto-triggered /continue
-          null, // initialContext
-          commandResult.assignedTasksContext
-        );
+        const aiResponse = await getAiResponse(topic, instructionForAi, currentDiscussionForProcessing, numThoughts, memoryContext, commandResult.targetExpert, isAutoTriggered ? null : imageFileForAi, null, commandResult.assignedTasksContext);
         processAndAddAiResponse(aiResponse, commandResult.targetExpert);
       } else if (commandResult.action === 'round_robin_ai_response') {
+        let allGeneratedTasks: GeminiGeneratedTask[] = [];
+
         for (const expertToEmulate of EXPERT_ROUND_ROBIN_ORDER) {
           currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion]; 
-          const aiResponse = await getAiResponse(
-            topic, 
-            instructionForAi, 
-            currentDiscussionForProcessing,
-            numThoughts, 
-            memoryContext, 
-            selectedModelId,
-            expertToEmulate,
-            isAutoTriggered ? null : imageFileForAi // Don't pass image for auto-triggered /continue
-          );
-          processAndAddAiResponse(aiResponse, expertToEmulate);
+          
+          let finalInstructionForExpert = instructionForAi;
+          // If it's a breakdown command, create a specific prompt for each expert
+          if (storyToBreakDownId) {
+             const story = useAgileBloomStore.getState().trackedStories.find(s => s.id === storyToBreakDownId)!;
+             finalInstructionForExpert = BREAKDOWN_STORY_PROMPT_TEMPLATE
+                .replace(/{emulated_expert_name}/g, expertToEmulate)
+                .replace(/{emulated_expert_description}/g, EXPERTS[expertToEmulate].description)
+                .replace(/{user_story_text}/g, story.userStory)
+                .replace(/{user_story_benefit}/g, story.benefit)
+                .replace(/{user_story_ac}/g, story.acceptanceCriteria.map(ac => `- ${ac}`).join('\n'))
+                .replace(/{expert_emoji_placeholder}/g, EXPERTS[expertToEmulate].emoji);
+          }
+
+          const aiResponse = await getAiResponse(topic, finalInstructionForExpert, currentDiscussionForProcessing, numThoughts, memoryContext, expertToEmulate, isAutoTriggered ? null : imageFileForAi);
+          processAndAddAiResponse(aiResponse, expertToEmulate, storyToBreakDownId);
+
+          if(storyToBreakDownId && aiResponse.tasks) {
+             allGeneratedTasks.push(...aiResponse.tasks);
+          }
+        }
+        if (storyToBreakDownId && allGeneratedTasks.length > 0) {
+           addMessage({
+              expertName: ExpertRole.System,
+              text: `Breakdown complete. ${allGeneratedTasks.length} tasks were created for story #${storyToBreakDownId.substring(0,6)}.`,
+              isCommandResponse: true,
+           });
         }
         await updateNarrativeSummary();
       }
@@ -704,12 +745,12 @@ Based on the provided conversation history and this resolved question, your task
   }, [ 
       addUserMessageTimestamp, setRateLimitedStatus, toggleAutoMode, addMessage, addErrorMessage, 
       setLoading, toggleHelpModal, storeClearChat, clearUploadedFile, processAndAddAiResponse,
-      updateTrackedQuestionStatus, clearAllTrackedQuestions, clearTrackedQuestionsByStatus, selectedModelId, updateNarrativeSummary
+      updateTrackedQuestionStatus, clearAllTrackedQuestions, clearTrackedQuestionsByStatus, updateNarrativeSummary
     ]);
 
   const initiateDiscussion = useCallback(async (topic: string, context: string) => {
     storeClearChat();
-    setTopic(topic);
+    useAgileBloomStore.getState().setTopic(topic);
     addMessage({
       expertName: ExpertRole.System,
       text: `Discussion started on topic: "${topic}". The AI team will now provide their initial thoughts.`,
@@ -722,7 +763,7 @@ Based on the provided conversation history and this resolved question, your task
     
     try {
       for (const expertToEmulate of EXPERT_ROUND_ROBIN_ORDER) {
-        const { discussion, memoryContext, numThoughts, selectedModelId } = useAgileBloomStore.getState();
+        const { discussion, memoryContext, numThoughts } = useAgileBloomStore.getState();
 
         const aiResponse = await getAiResponse(
           topic, 
@@ -730,7 +771,6 @@ Based on the provided conversation history and this resolved question, your task
           discussion,
           numThoughts, 
           memoryContext, 
-          selectedModelId,
           expertToEmulate,
           null, // No uploaded image file for initiation
           initialContextForAi
@@ -745,7 +785,7 @@ Based on the provided conversation history and this resolved question, your task
     } finally {
         setLoading(false);
     }
-  }, [storeClearChat, setTopic, addMessage, setLoading, addErrorMessage, processAndAddAiResponse, updateNarrativeSummary]);
+  }, [storeClearChat, addMessage, setLoading, addErrorMessage, processAndAddAiResponse, updateNarrativeSummary]);
 
 
   // Effect for Rate Limiting
@@ -777,6 +817,8 @@ Based on the provided conversation history and this resolved question, your task
       autoContinueTimeoutRef.current = null;
     }
 
+    const { isAutoModeEnabled, isLoading, topic, discussion } = useAgileBloomStore.getState();
+
     if (!isAutoModeEnabled || isLoading || !topic || discussion.length === 0) {
       return;
     }
@@ -802,8 +844,8 @@ Based on the provided conversation history and this resolved question, your task
         autoContinueTimeoutRef.current = null;
       }
     };
-  }, [isAutoModeEnabled, isLoading, discussion, topic, autoModeDelaySeconds, sendMessage]);
+  }, [discussion, sendMessage, autoModeDelaySeconds]);
 
 
-  return { sendMessage, initiateDiscussion, updateQuestionStatusAndPotentiallyGenerateActions, generateTasksFromContext };
+  return { sendMessage, initiateDiscussion, updateQuestionStatusAndPotentiallyGenerateActions, generateTasksFromContext, handleTaskStatusUpdate };
 };

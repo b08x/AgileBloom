@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ChatInterface } from './components/ChatInterface';
 import { Header } from './components/Header';
@@ -6,17 +7,23 @@ import { LandingPage } from './components/LandingPage';
 import { SetupPage } from './components/SetupPage';
 import { useAgileBloomChat } from './hooks/useAgileBloomChat';
 import useAgileBloomStore from './store/useAgileBloomStore';
+import { AIConfig } from './types';
+import { ExplanationPage } from './components/ExplanationPage';
 
 const App: React.FC = () => {
-  const [appState, setAppState] = useState<'landing' | 'setup' | 'chat'>('landing');
+  const [appState, setAppState] = useState<'explanation' | 'landing' | 'setup' | 'chat'>('explanation');
   const { initiateDiscussion } = useAgileBloomChat();
-  const { setSelectedModelId } = useAgileBloomStore();
+  const { setAiConfig } = useAgileBloomStore();
 
-  const handleSetupComplete = (topic: string, context: string, modelId: string) => {
-    setSelectedModelId(modelId);
+  const handleSetupComplete = (topic: string, context: string, config: AIConfig) => {
+    setAiConfig(config);
     initiateDiscussion(topic, context);
     setAppState('chat');
   };
+
+  if (appState === 'explanation') {
+    return <ExplanationPage onContinue={() => setAppState('landing')} />;
+  }
 
   if (appState === 'landing') {
     return <LandingPage onEnter={() => setAppState('setup')} />;

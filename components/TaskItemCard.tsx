@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { TrackedTask, TaskStatus, ExpertRole } from '../types';
 import { EXPERTS } from '../constants';
-import { Circle, Settings2, Check, Trash2, User, Play } from 'lucide-react';
+import { Circle, Settings2, Check, Trash2, User, Play, Link } from 'lucide-react';
+import useAgileBloomStore from '../store/useAgileBloomStore';
 
 interface TaskItemCardProps {
   task: TrackedTask;
@@ -19,12 +19,22 @@ const statusConfig: Record<TaskStatus, { icon: React.ReactNode; color: string; }
 };
 
 export const TaskItemCard: React.FC<TaskItemCardProps> = ({ task, onUpdateStatus, onRemove, onShowWork, isDisabled }) => {
-    const { id, description, status, assignedTo } = task;
+    const { id, description, status, assignedTo, storyId } = task;
+    const { trackedStories } = useAgileBloomStore.getState();
+    
     const config = statusConfig[status] || statusConfig[TaskStatus.ToDo];
     const expert = assignedTo ? EXPERTS[assignedTo] : null;
 
+    const parentStory = storyId ? trackedStories.find(s => s.id === storyId) : null;
+
     return (
-        <div className="w-full text-left p-3 bg-gray-900/40 rounded-lg border border-gray-700/60 transition-all duration-200">
+        <div className="w-full text-left p-3 bg-gray-900/40 rounded-lg border border-gray-700/60 transition-all duration-200 space-y-2">
+             {parentStory && (
+                <div className="text-xs text-indigo-300 flex items-center gap-1.5 bg-indigo-900/30 px-2 py-1 rounded-full w-fit">
+                   <Link size={12}/>
+                   From Story: #{parentStory.id.substring(0, 6)}
+                </div>
+             )}
             <div className="flex justify-between items-start">
                 <p className="text-sm text-gray-200 leading-snug flex-grow pr-2 whitespace-pre-wrap">{description}</p>
                 <button

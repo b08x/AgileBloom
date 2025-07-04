@@ -1,28 +1,18 @@
-
-
-
-
 import React, { useEffect, useRef } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { MessageBubble } from './MessageBubble';
 import { CommandInput } from './CommandInput';
 import { LoadingSpinner } from './LoadingSpinner';
 import { HelpModal } from './HelpModal';
-import { API_KEY_ERROR_MESSAGE, MISTRAL_API_KEY_ERROR_MESSAGE, SUPPORTED_MODELS } from '../constants';
 import { RightSidebarContainer } from './RightSidebarContainer';
-import { NarrativeSummarySidebar } from './NarrativeSummarySidebar';
-import { AiProvider } from '../types';
+import { ExpertTasksSidebar } from './ExpertTasksSidebar';
 
 export const ChatInterface: React.FC = () => {
   const { 
     discussion, 
     isLoading, 
     error, 
-    apiKeyStatus,
-    mistralApiKeyStatus, 
     isHelpModalOpen, 
-    checkApiKeysStatus,
-    selectedModelId
   } = useAgileBloomStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -32,30 +22,15 @@ export const ChatInterface: React.FC = () => {
 
   useEffect(scrollToBottom, [discussion]);
   
-  useEffect(() => {
-    if (apiKeyStatus === 'unchecked' || mistralApiKeyStatus === 'unchecked') {
-      checkApiKeysStatus();
-    }
-  }, [apiKeyStatus, mistralApiKeyStatus, checkApiKeysStatus]);
-
-  const selectedModel = SUPPORTED_MODELS.find(m => m.id === selectedModelId);
-  let apiKeyErrorMessage: string | null = null;
-
-  if (selectedModel?.provider === AiProvider.Gemini && apiKeyStatus === 'error') {
-    apiKeyErrorMessage = API_KEY_ERROR_MESSAGE + " (process.env.API_KEY)";
-  } else if (selectedModel?.provider === AiProvider.Mistral && mistralApiKeyStatus === 'error') {
-    apiKeyErrorMessage = MISTRAL_API_KEY_ERROR_MESSAGE + " (process.env.MISTRAL_API_KEY)";
-  }
-
   return (
     <div className="flex flex-col h-full">
       {isHelpModalOpen && <HelpModal />}
       
       <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 overflow-hidden p-2 sm:p-4 gap-4">
         
-        {/* Left Sidebar (Narrative Summary) */}
+        {/* Left Sidebar (Current Tasks) */}
         <div className="order-1 lg:col-span-3 hidden lg:flex flex-col overflow-hidden">
-          <NarrativeSummarySidebar />
+          <ExpertTasksSidebar />
         </div>
 
         {/* Center Column (Messages + Input) */}
@@ -63,12 +38,7 @@ export const ChatInterface: React.FC = () => {
           <div 
             className="flex-grow overflow-y-auto rounded-lg glassmorphism scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50 p-3 sm:p-4"
           >
-            {apiKeyErrorMessage && (
-              <div className="my-2 p-3 bg-red-800/80 border border-red-700 text-white rounded-md text-sm" role="alert" aria-live="assertive">
-                <strong>Configuration Error:</strong> {apiKeyErrorMessage} The application requires a valid API Key set as an environment variable to function.
-              </div>
-            )}
-            {error && !apiKeyErrorMessage && ( 
+            {error && ( 
               <div className="my-2 p-3 bg-red-700/70 border border-red-600 text-white rounded-md text-sm" role="alert" aria-live="assertive">
                 <strong>Error:</strong> {error}
               </div>
@@ -88,7 +58,7 @@ export const ChatInterface: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Sidebar (Questions/Tasks) */}
+        {/* Right Sidebar (Questions/Stories) */}
         <div className="order-3 lg:col-span-3 hidden lg:flex flex-col overflow-hidden rounded-lg bg-gray-800/30 backdrop-blur-sm">
            <RightSidebarContainer />
         </div>

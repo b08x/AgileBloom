@@ -1,24 +1,12 @@
 
-
-import { GoogleGenAI, GenerateContentResponse, Part, GenerateContentParameters } from "@google/genai";
-import { Mistral } from '@mistralai/mistralai'; // Import the Mistral client
-import { DiscussionMessage, ExpertRole, GeminiResponseJson, UploadedFile, SupportedModel, AiProvider } from '../types';
-import { EXPERTS, INITIAL_SYSTEM_PROMPT_TEMPLATE, FISH_SCRUM_ANALYSIS_PROMPT_SECTION, SUPPORTED_IMAGE_MIME_TYPES, SUPPORTED_MODELS } from '../constants';
+import { GoogleGenAI, GenerateContentResponse, Part } from "@google/genai";
+import { createMistral } from '@ai-sdk/mistral';
+import { generateText } from 'ai';
+import OpenAI from 'openai';
+import { DiscussionMessage, ExpertRole, GeminiResponseJson, UploadedFile, AiProvider } from '../types';
+import { EXPERTS, INITIAL_SYSTEM_PROMPT_TEMPLATE, FISH_STORY_TASK_ANALYSIS_PROMPT, SUPPORTED_IMAGE_MIME_TYPES } from '../constants';
+import { AVAILABLE_MODELS } from '../constants/providerConfig';
 import useAgileBloomStore from '../store/useAgileBloomStore';
-
-// --- Client Initialization ---
-const GEMINI_API_KEY = process.env.API_KEY || "NO_GEMINI_KEY_FOUND";
-const geminiAi = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
-// As per user guidance, import and instantiate the Mistral client.
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || "NO_MISTRAL_KEY_FOUND";
-const mistralClient = new Mistral({
-    apiKey: MISTRAL_API_KEY
-});
-
-
-const MAX_RETRIES = 3;
-const INITIAL_DELAY_MS = 1000;
 
 // --- Helper Functions ---
 
@@ -41,8 +29,12 @@ function buildSystemPrompt(
         emulationInstructions = `\nYou are currently emulating: ${expertToEmulate.name} (${expertToEmulate.emoji}). Your response MUST be from this expert's perspective.`;
         responsePersonaInstruction = `You MUST respond as ${expertToEmulate.name}. The "expert" field in your JSON output MUST be "${expertToEmulate.name}".`;
 
-        if (emulateExpertAs === ExpertRole.ScrumLeader && currentUserMessageOrCommand.toLowerCase().startsWith("/backlog")) {
-            specificTaskInstructions = `\nFollow these specific instructions for the FISH-Scrum Analysis: \n${FISH_SCRUM_ANALYSIS_PROMPT_SECTION}\n\nApply this FISH-Scrum framework to the current topic: "${currentTopic || "No topic set. Please analyze the general situation or prompt user for a topic."}". The full analysis should be in the 'work' field of your JSON response.`;
+        if (emulateExpertAs === ExpertRole.ScrumLeader) {
+            if (currentUserMessageOrCommand.toLowerCase().includes("perform a fish analysis on the following item")) {
+                specificTaskInstructions = `\nFollow these specific instructions for the FISH Analysis on the item provided by the user: \n${FISH_STORY_TASK_ANALYSIS_PROMPT}`;
+            } else if (currentUserMessageOrCommand.toLowerCase().startsWith("/backlog")) {
+                specificTaskInstructions = `\nUser command is /backlog. Provide a health check of the product backlog. In your main 'message', summarize the number of stories and tasks in each status. Point out any items that seem high-risk, poorly defined, or have been inactive for a long time. Suggest 1-2 items that might benefit from a detailed \`/analyze {id}\` command.`;
+            }
         }
     }
 
@@ -74,6 +66,9 @@ function buildSystemPrompt(
         .replace('{{assigned_tasks_section}}', assignedTasksSection);
 }
 
+const MAX_RETRIES = 3;
+const INITIAL_DELAY_MS = 1000;
+
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
     let retries = 0;
     let lastError: Error | null = null;
@@ -85,7 +80,7 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
             const errorMessage = lastError.message.toLowerCase();
             console.error(`Error calling AI API (Attempt ${retries + 1}/${MAX_RETRIES + 1}):`, lastError);
 
-            if (errorMessage.includes('quota exceeded')) {
+            if (errorMessage.includes('quota')) {
                 console.error("Quota exceeded error detected. Halting further API requests.");
                 useAgileBloomStore.getState().setQuotaExceeded(true);
                 throw new Error("Failed to call the AI API, quota exceeded. Please try again later.");
@@ -102,127 +97,151 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
     throw new Error(lastError?.message || "AI API Error: Exhausted retries but did not return or throw explicitly from loop.");
 }
 
+function parseJsonResponse(rawResponseText: string): GeminiResponseJson {
+    let jsonStr = rawResponseText.trim();
+    const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+    const match = jsonStr.match(fenceRegex);
+    if (match?.[2]) {
+        jsonStr = match[2].trim();
+    }
+    return JSON.parse(jsonStr) as GeminiResponseJson;
+}
+
 // --- Provider-Specific Implementations ---
 
 async function generateGeminiResponse(
+  apiKey: string,
+  modelId: string,
   systemPromptText: string,
   userMessage: string,
-  modelId: string,
   useGoogleSearch: boolean,
+  params: Record<string, any>,
   uploadedImageFile?: UploadedFile | null,
 ): Promise<GeminiResponseJson> {
-
+  const geminiAi = new GoogleGenAI({ apiKey });
   const contentParts: Part[] = [];
-  if (uploadedImageFile && uploadedImageFile.base64Data && SUPPORTED_IMAGE_MIME_TYPES.includes(uploadedImageFile.mimeType)) {
+
+  if (uploadedImageFile?.base64Data && SUPPORTED_IMAGE_MIME_TYPES.includes(uploadedImageFile.mimeType)) {
       contentParts.push({ inlineData: { mimeType: uploadedImageFile.mimeType, data: uploadedImageFile.base64Data } });
   }
   contentParts.push({ text: userMessage || "Please analyze the provided content." });
 
-  const apiRequest: GenerateContentParameters = {
+  const response: GenerateContentResponse = await geminiAi.models.generateContent({
       model: modelId,
       contents: { parts: contentParts },
-      config: { systemInstruction: systemPromptText },
-  };
-
-  if (useGoogleSearch) {
-      apiRequest.config!.tools = [{ googleSearch: {} }];
-      console.log(`Google Search tool enabled for this request on model ${modelId}.`);
-  } else {
-      apiRequest.config!.responseMimeType = "application/json";
-  }
-
-  const response: GenerateContentResponse = await geminiAi.models.generateContent(apiRequest);
-  const rawResponseText = response.text;
-  let groundingData: Array<{ web: { uri: string; title: string; } }> | null = null;
-
+      config: { 
+        systemInstruction: systemPromptText,
+        tools: useGoogleSearch ? [{ googleSearch: {} }] : undefined,
+        responseMimeType: useGoogleSearch ? undefined : "application/json",
+        temperature: params.temperature,
+        topP: params.topP,
+        topK: params.topK,
+      },
+  });
+  
+  const parsedData = parseJsonResponse(response.text);
+  
   if (useGoogleSearch && response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-      groundingData = response.candidates[0].groundingMetadata.groundingChunks
+      parsedData.groundingData = response.candidates[0].groundingMetadata.groundingChunks
           .filter(chunk => chunk.web?.uri && chunk.web?.title)
           .map(chunk => ({ web: { uri: chunk.web!.uri!, title: chunk.web!.title! } }));
-      if (groundingData.length === 0) groundingData = null;
   }
-  
-  if (!rawResponseText) {
-      throw new Error("Received empty response from Gemini API");
-  }
-  
-  let jsonStr = rawResponseText.trim();
-  const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-  const match = jsonStr.match(fenceRegex);
-  if (match?.[2]) {
-      jsonStr = match[2].trim();
-  }
-
-  const parsedData = JSON.parse(jsonStr) as Omit<GeminiResponseJson, 'groundingData'>;
-  return { ...parsedData, groundingData };
+  return parsedData;
 }
 
 async function generateMistralResponse(
-    systemPromptText: string,
-    discussionHistory: DiscussionMessage[],
-    userMessage: string,
+    apiKey: string,
     modelId: string,
+    systemPromptText: string,
+    userMessage: string,
+    params: Record<string, any>,
 ): Promise<GeminiResponseJson> {
-
-    const mistralMessages = discussionHistory.map(msg => {
-        let role: 'user' | 'assistant' | 'system' = 'assistant';
-        if (msg.expert.name === ExpertRole.User) role = 'user';
-        // System messages are handled by the main system prompt, not in history for Mistral
-        if (msg.expert.name === ExpertRole.System) return null;
-
-        return { role, content: `${msg.expert.name}: ${msg.text}${msg.work ? `\nWORK:\n${msg.work}` : ''}` };
-    }).filter(Boolean) as { role: 'user' | 'assistant', content: string }[];
-
-    const messages: any[] = [ // eslint-disable-line @typescript-eslint/no-explicit-any
-        { role: 'system', content: systemPromptText },
-        ...mistralMessages,
-        { role: 'user', content: userMessage }
-    ];
-
-    try {
-        // Use the correct method for Mistral SDK v1.7.2
-        const response = await mistralClient.chat.complete({
-            model: modelId,
-            messages: messages,
-            responseFormat: { type: 'json_object' }
-        });
-
-        const responseContent = response.choices[0].message.content;
-        if (typeof responseContent !== 'string') {
-            throw new Error("Mistral response content is not a string.");
-        }
-
-        return JSON.parse(responseContent) as GeminiResponseJson;
-    } catch (error) {
-        // Enhanced error handling for Mistral API
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('Mistral API Error:', errorMessage);
-        
-        // Check for common Mistral API errors
-        if (errorMessage.includes('API key')) {
-            throw new Error(`Mistral API key error: ${errorMessage}. Please check your MISTRAL_API_KEY environment variable.`);
-        }
-        if (errorMessage.includes('model')) {
-            throw new Error(`Mistral model error: ${errorMessage}. Model '${modelId}' may not be available.`);
-        }
-        if (errorMessage.includes('quota') || errorMessage.includes('rate limit') || errorMessage.includes('capacity exceeded')) {
-            // For capacity/quota issues, suggest using a smaller model
-            const alternativeModels = ['mistral-small-latest', 'open-mixtral-8x7b'];
-            const currentModelIndex = alternativeModels.indexOf(modelId);
-            const suggestedModel = currentModelIndex === -1 ? alternativeModels[0] :
-                                 currentModelIndex < alternativeModels.length - 1 ? alternativeModels[currentModelIndex + 1] : null;
-            
-            const suggestion = suggestedModel ?
-                ` Try switching to '${suggestedModel}' which may have better availability.` :
-                ' Try switching to a smaller Mistral model or use Gemini instead.';
-            
-            throw new Error(`Mistral API capacity/quota exceeded for model '${modelId}'.${suggestion} Original error: ${errorMessage}`);
-        }
-        
-        throw new Error(`Mistral API Error: ${errorMessage}`);
-    }
+    const mistralProvider = createMistral({ apiKey });
+    const { text } = await generateText({
+        model: mistralProvider(modelId, { 
+            safePrompt: false,
+        }),
+        system: systemPromptText,
+        messages: [{ role: 'user', content: userMessage }],
+        temperature: params.temperature,
+    });
+    return parseJsonResponse(text);
 }
 
+async function generateOpenAiResponse(
+    apiKey: string,
+    modelId: string,
+    systemPromptText: string,
+    userMessage: string,
+    uploadedImageFile: UploadedFile | null,
+    params: Record<string, any>
+): Promise<GeminiResponseJson> {
+    const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+    
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemPromptText },
+    ];
+
+    const userContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [{ type: 'text', text: userMessage }];
+    if (uploadedImageFile?.base64Data && SUPPORTED_IMAGE_MIME_TYPES.includes(uploadedImageFile.mimeType)) {
+        userContent.push({
+            type: 'image_url',
+            image_url: { url: `data:${uploadedImageFile.mimeType};base64,${uploadedImageFile.base64Data}` }
+        });
+    }
+    messages.push({ role: 'user', content: userContent });
+    
+    const response = await openai.chat.completions.create({
+        model: modelId,
+        messages: messages,
+        response_format: { type: 'json_object' },
+        temperature: params.temperature,
+        top_p: params.topP,
+    });
+    
+    const responseText = response.choices[0]?.message?.content;
+    if (!responseText) throw new Error("OpenAI response was empty.");
+    return JSON.parse(responseText) as GeminiResponseJson;
+}
+
+async function generateOpenRouterResponse(
+    apiKey: string,
+    modelId: string,
+    systemPromptText: string,
+    userMessage: string,
+    uploadedImageFile: UploadedFile | null,
+    params: Record<string, any>
+): Promise<GeminiResponseJson> {
+    const openrouter = new OpenAI({ 
+        apiKey, 
+        baseURL: "https://openrouter.ai/api/v1",
+        dangerouslyAllowBrowser: true 
+    });
+
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemPromptText },
+    ];
+
+    const userContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [{ type: 'text', text: userMessage }];
+    if (uploadedImageFile?.base64Data && SUPPORTED_IMAGE_MIME_TYPES.includes(uploadedImageFile.mimeType)) {
+        userContent.push({
+            type: 'image_url',
+            image_url: { url: `data:${uploadedImageFile.mimeType};base64,${uploadedImageFile.base64Data}` }
+        });
+    }
+    messages.push({ role: 'user', content: userContent });
+
+    const response = await openrouter.chat.completions.create({
+        model: modelId,
+        messages: messages,
+        response_format: { type: 'json_object' },
+        temperature: params.temperature,
+    });
+
+    const responseText = response.choices[0]?.message?.content;
+    if (!responseText) throw new Error("OpenRouter response was empty.");
+    return JSON.parse(responseText) as GeminiResponseJson;
+}
 
 // --- Main Exported Function (Router) ---
 
@@ -232,18 +251,29 @@ export async function getAiResponse(
   discussionHistory: DiscussionMessage[],
   numThoughts: number,
   memoryContext: string[],
-  modelId: string,
   emulateExpertAs?: ExpertRole,
-  uploadedFile?: UploadedFile | null, // Note: Mistral implementation doesn't support images yet
+  uploadedFile?: UploadedFile | null,
   initialContext?: string | null,
   assignedTasksContext?: string | null
 ): Promise<GeminiResponseJson> {
   
-    if (useAgileBloomStore.getState().isQuotaExceeded) {
+    const { aiConfig, isQuotaExceeded } = useAgileBloomStore.getState();
+
+    if (isQuotaExceeded) {
         throw new Error("All AI requests are currently halted due to an API quota issue.");
     }
+    if (!aiConfig) {
+        throw new Error("AI configuration is not set. Please configure the AI provider on the setup page.");
+    }
 
-    const modelInfo = SUPPORTED_MODELS.find(m => m.id === modelId);
+    const { provider, modelId, apiKeys, params } = aiConfig;
+    const apiKey = apiKeys[provider];
+
+    if (!apiKey) {
+        throw new Error(`API Key for the selected provider (${provider}) is missing.`);
+    }
+
+    const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
     if (!modelInfo) {
         throw new Error(`Model with ID '${modelId}' not found in supported models list.`);
     }
@@ -254,17 +284,22 @@ export async function getAiResponse(
     );
 
     const aiCall = async (): Promise<GeminiResponseJson> => {
-        switch(modelInfo.provider) {
-            case AiProvider.Gemini:
+        switch(provider) {
+            case AiProvider.Google:
                 const useGoogleSearch = currentUserMessageOrCommand.toLowerCase().startsWith("/ask") && modelInfo.supportsSearch;
-                return await generateGeminiResponse(systemPrompt, currentUserMessageOrCommand, modelId, useGoogleSearch, uploadedFile);
+                return await generateGeminiResponse(apiKey, modelId, systemPrompt, currentUserMessageOrCommand, useGoogleSearch, params, uploadedFile);
             
             case AiProvider.Mistral:
-                // Note: Image data from uploadedFile is currently ignored for Mistral.
-                return await generateMistralResponse(systemPrompt, discussionHistory, currentUserMessageOrCommand, modelId);
+                return await generateMistralResponse(apiKey, modelId, systemPrompt, currentUserMessageOrCommand, params);
+
+            case AiProvider.OpenAI:
+                 return await generateOpenAiResponse(apiKey, modelId, systemPrompt, currentUserMessageOrCommand, uploadedFile, params);
+
+            case AiProvider.OpenRouter:
+                 return await generateOpenRouterResponse(apiKey, modelId, systemPrompt, currentUserMessageOrCommand, uploadedFile, params);
             
             default:
-                throw new Error(`Unsupported AI provider: ${modelInfo.provider}`);
+                throw new Error(`Unsupported AI provider: ${provider}`);
         }
     };
     

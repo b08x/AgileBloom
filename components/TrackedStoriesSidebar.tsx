@@ -1,13 +1,15 @@
+
 import React, { useState } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
-import { StoryStatus, TrackedStory } from '../types';
+import { StoryStatus, TrackedStory, StoryPriority } from '../types';
 import { StoryItemCard } from './StoryItemCard';
-import { BookOpen, PlusCircle, FileJson, FileSpreadsheet } from 'lucide-react';
+import { BookOpen, PlusCircle, FileJson, FileSpreadsheet, BrainCircuit } from 'lucide-react';
+import { useAgileBloomChat } from '../hooks/useAgileBloomChat';
 
 const FILTERS: Array<{ label: string; value: StoryStatus | 'all' }> = [
-    { label: "New", value: StoryStatus.New },
-    { label: "Refining", value: StoryStatus.Refining },
-    { label: "Ready", value: StoryStatus.Ready },
+    { label: "Backlog", value: StoryStatus.Backlog },
+    { label: "Sprint", value: StoryStatus.SelectedForSprint },
+    { label: "In Progress", value: StoryStatus.InProgress },
     { label: "Done", value: StoryStatus.Done },
     { label: "All", value: "all" },
 ];
@@ -32,7 +34,7 @@ const downloadFile = (content: string, fileName: string, mimeType: string) => {
 
 const convertToCsv = (data: TrackedStory[]): string => {
   if (data.length === 0) return "";
-  const headers = ['id', 'status', 'userStory', 'benefit', 'acceptanceCriteria', 'assignedTo', 'createdBy', 'timestamp'];
+  const headers = ['id', 'status', 'priority', 'sprintPoints', 'userStory', 'benefit', 'acceptanceCriteria', 'assignedTo', 'createdBy', 'timestamp'];
   const escapeCsvCell = (cell: any) => {
     if (cell === undefined || cell === null) return '';
     let strCell = Array.isArray(cell) ? cell.join('; ') : String(cell);
@@ -53,14 +55,14 @@ export const TrackedStoriesSidebar: React.FC = () => {
         trackedStories, 
         isLoading, 
         addTrackedStory,
-        updateTrackedStoryStatus,
+        updateTrackedStory,
         removeTrackedStory,
-        clearAllTrackedStories,
-        clearTrackedStoriesByStatus,
         topic,
     } = useAgileBloomStore();
+    
+    const { sendMessage } = useAgileBloomChat();
 
-    const [activeFilter, setActiveFilter] = useState<StoryStatus | 'all'>(StoryStatus.New);
+    const [activeFilter, setActiveFilter] = useState<StoryStatus | 'all'>(StoryStatus.Backlog);
     const [newUserStory, setNewUserStory] = useState('');
     const [newBenefit, setNewBenefit] = useState('');
     const [newCriteria, setNewCriteria] = useState('');
@@ -73,6 +75,7 @@ export const TrackedStoriesSidebar: React.FC = () => {
                 benefit: newBenefit.trim(),
                 acceptanceCriteria: newCriteria.split('\n').map(c => c.trim()).filter(Boolean),
                 createdBy: 'User',
+                priority: 'Medium', // Add default priority
             });
             setNewUserStory('');
             setNewBenefit('');
@@ -99,9 +102,20 @@ export const TrackedStoriesSidebar: React.FC = () => {
     return (
         <div className="flex flex-col h-full w-full">
             <header className="p-4 border-b border-gray-700/50">
-                <h2 className="text-lg font-semibold text-purple-300">Tracked User Stories</h2>
+                 <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-semibold text-purple-300">User Story Backlog</h2>
+                     <button
+                        onClick={() => sendMessage('/sprint-planning', null, false)}
+                        disabled={isLoading || !topic || !trackedStories.some(s => s.status === StoryStatus.Backlog)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs text-purple-300 bg-purple-900/40 hover:bg-purple-800/60 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={!topic ? "Start a discussion first" : "Ask Scrum Leader to suggest a sprint plan"}
+                    >
+                        <BrainCircuit size={14} />
+                        Plan Sprint
+                    </button>
+                </div>
                 <div className="flex justify-between items-center mt-2">
-                    <p className="text-xs text-gray-400">Manage user stories below</p>
+                    <p className="text-xs text-gray-400">Manage your product backlog</p>
                     <div className="flex gap-2">
                          <button onClick={handleExportJson} disabled={isLoading || filteredStories.length === 0} className="p-1.5 rounded text-gray-300 hover:bg-blue-900/50 hover:text-blue-300 transition-colors disabled:opacity-50" title="Export as JSON"><FileJson size={16} /></button>
                          <button onClick={handleExportCsv} disabled={isLoading || filteredStories.length === 0} className="p-1.5 rounded text-gray-300 hover:bg-green-900/50 hover:text-green-300 transition-colors disabled:opacity-50" title="Export as CSV"><FileSpreadsheet size={16} /></button>
@@ -126,8 +140,9 @@ export const TrackedStoriesSidebar: React.FC = () => {
                            <StoryItemCard 
                                 key={s.id} 
                                 story={s} 
-                                onUpdateStatus={updateTrackedStoryStatus}
+                                onUpdate={updateTrackedStory}
                                 onRemove={removeTrackedStory}
+                                onBreakdown={() => sendMessage(`/breakdown ${s.id.substring(0,6)}`, null, false)}
                                 isDisabled={isLoading}
                            />
                         ))}
@@ -137,7 +152,7 @@ export const TrackedStoriesSidebar: React.FC = () => {
                         <BookOpen size={40} className="mb-3 opacity-50" />
                         <h3 className="font-semibold text-gray-400">No Stories Here</h3>
                         <p className="text-xs">No stories match the "{activeFilter}" filter.</p>
-                        <p className="text-xs mt-2">{topic ? "Use '/stories' to generate from questions, or add one below." : "Start a discussion to add stories."}</p>
+                        <p className="text-xs mt-2">{topic ? "Address questions to generate stories, or add one below." : "Start a discussion to add stories."}</p>
                     </div>
                 )}
             </div>

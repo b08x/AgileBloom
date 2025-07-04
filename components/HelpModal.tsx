@@ -1,4 +1,3 @@
-
 import React from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { AVAILABLE_COMMANDS } from '../constants';
@@ -7,8 +6,7 @@ import { X } from 'lucide-react';
 export const HelpModal: React.FC = () => {
   const { toggleHelpModal } = useAgileBloomStore();
 
-  // Filter out the /auto command as it's now a UI checkbox
-  const commandsToDisplay = AVAILABLE_COMMANDS.filter(cmd => cmd.name !== '/auto');
+  const commandsToDisplay = AVAILABLE_COMMANDS;
 
   return (
     <div 

@@ -30,11 +30,11 @@ export const MessageBubble: React.FC<{ message: DiscussionMessage }> = React.mem
 
   const formattedTimestamp = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  const isFishScrumAnalysis = 
+  const isFishAnalysis = 
     isCommandResponse &&
     expert.name === ExpertRole.ScrumLeader && 
     work && 
-    (work.toLowerCase().includes("fish-scrum analysis") || work.toLowerCase().includes("root collaboration need"));
+    (work.toLowerCase().includes("fish analysis") || work.toLowerCase().includes("rationale score"));
 
   const isScrumLeaderStoryResponse = expert.name === ExpertRole.ScrumLeader && 
                                    isCommandResponse && 
@@ -72,9 +72,9 @@ export const MessageBubble: React.FC<{ message: DiscussionMessage }> = React.mem
         {work && (
           <div className="mt-2 pt-2 border-t border-white/20">
             <h4 className="text-xs font-semibold mb-1 opacity-80">
-              {isFishScrumAnalysis ? "FISH-Scrum Analysis:" : isScrumLeaderStoryResponse ? "Generated User Stories:" : "Work:"}
+              {isFishAnalysis ? "FISH Analysis:" : isScrumLeaderStoryResponse ? "Generated User Stories:" : "Work:"}
             </h4>
-            <CodeBlock code={work} language={isFishScrumAnalysis || isScrumLeaderStoryResponse ? "markdown" : "auto"} />
+            <CodeBlock code={work} language={isFishAnalysis || isScrumLeaderStoryResponse ? "markdown" : "auto"} />
           </div>
         )}
         {searchCitations && searchCitations.length > 0 && (

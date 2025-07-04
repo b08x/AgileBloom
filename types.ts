@@ -1,9 +1,34 @@
 
 
+
 export enum AiProvider {
-  Gemini = "Gemini",
+  Google = "Google",
   Mistral = "Mistral",
+  OpenAI = "OpenAI",
+  OpenRouter = "OpenRouter",
 }
+
+export interface ModelParameter {
+  id: 'temperature' | 'topP' | 'topK' | 'maxLength';
+  name: string;
+  type: 'slider';
+  min: number;
+  max: number;
+  step: number;
+  defaultValue: number;
+}
+
+
+export interface AIModelConfig {
+  id: string; // e.g., 'gemini-2.5-flash-preview-04-17'
+  name: string; // e.g., 'Gemini 2.5 Flash'
+  provider: AiProvider;
+  parameters: ModelParameter[];
+  supportsVision: boolean;
+  supportsSearch: boolean; // Gemini-specific
+  description: string;
+}
+
 
 export enum ExpertRole {
   System = "System",
@@ -55,6 +80,8 @@ export interface GeminiGeneratedStory {
   userStory: string;
   benefit: string;
   acceptanceCriteria: string[];
+  priority?: StoryPriority;
+  sprintPoints?: number;
 }
 
 // Matches the expected JSON output structure from Gemini
@@ -121,15 +148,18 @@ export interface TrackedTask {
   createdBy: ExpertRole | 'User' | 'AI';
   timestamp: number;
   topicContext: string; // Topic at the time of creation
+  storyId?: string;
 }
 
 export enum StoryStatus {
-  New = "New",
-  Refining = "Refining",
-  Ready = "Ready",
+  Backlog = "Backlog",
+  SelectedForSprint = "Selected for Sprint",
+  InProgress = "In Progress",
   Done = "Done",
   Rejected = "Rejected",
 }
+
+export type StoryPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
 export interface TrackedStory {
   id: string;
@@ -137,17 +167,29 @@ export interface TrackedStory {
   acceptanceCriteria: string[];
   benefit: string;
   status: StoryStatus;
-  assignedTo?: ExpertRole;
+  priority: StoryPriority;
+  sprintPoints?: number;
+  assignedTo?: ExpertRole; // Potentially assigned to a lead expert for refinement
   createdBy: ExpertRole | 'User' | 'AI';
   timestamp: number;
   topicContext: string;
   fromQuestionId?: string; // Optional link back to the question it came from
 }
 
-export interface SupportedModel {
+
+// Renamed from SupportedModel to avoid confusion
+export interface DEPRECATED_SupportedModel {
   id: string;
   name: string;
   provider: AiProvider;
   description: string;
   supportsSearch: boolean;
+}
+
+export interface AIConfig {
+    provider: AiProvider;
+    modelId: string;
+    params: Record<string, any>;
+    apiKeys: Partial<Record<AiProvider, string>>;
+    useGeminiPreprocessing?: boolean;
 }
