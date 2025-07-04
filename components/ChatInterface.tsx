@@ -36,10 +36,10 @@ export const ChatInterface: React.FC = () => {
         {/* Center Column (Messages + Input) */}
         <div className="order-2 col-span-12 lg:col-span-6 flex flex-col overflow-hidden min-h-[85vh] lg:min-h-0">
           <div 
-            className="flex-grow overflow-y-auto rounded-lg glassmorphism scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50 p-3 sm:p-4"
+            className="flex-grow overflow-y-auto rounded-lg glassmorphism scrollbar-thin scrollbar-thumb-[#5c6f7e] scrollbar-track-[#212934]/50 p-3 sm:p-4"
           >
             {error && ( 
-              <div className="my-2 p-3 bg-red-700/70 border border-red-600 text-white rounded-md text-sm" role="alert" aria-live="assertive">
+              <div className="my-2 p-3 bg-red-600/70 border border-red-600 text-red-300 rounded-md text-sm" role="alert" aria-live="assertive">
                 <strong>Error:</strong> {error}
               </div>
             )}
@@ -59,7 +59,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Right Sidebar (Questions/Stories) */}
-        <div className="order-3 lg:col-span-3 hidden lg:flex flex-col overflow-hidden rounded-lg bg-gray-800/30 backdrop-blur-sm">
+        <div className="order-3 lg:col-span-3 hidden lg:flex flex-col overflow-hidden rounded-lg bg-[#333e48]/50 backdrop-blur-sm">
            <RightSidebarContainer />
         </div>
       </div>

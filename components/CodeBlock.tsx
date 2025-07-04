@@ -24,16 +24,16 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
 
     if (headers.length > 0 && rows.length > 0) {
         return (
-            <div className="overflow-x-auto my-2 bg-gray-800/50 p-2 rounded-md border border-gray-700/50 text-xs">
-                <table className="min-w-full divide-y divide-gray-600">
-                    <thead className="bg-gray-700/50">
+            <div className="overflow-x-auto my-2 bg-[#212934] p-2 rounded-md border border-[#5c6f7e] text-xs">
+                <table className="min-w-full divide-y divide-[#5c6f7e]">
+                    <thead className="bg-[#333e48]">
                         <tr>
                             {headers.map((header, i) => (
-                                <th key={i} scope="col" className="px-3 py-1.5 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">{header}</th>
+                                <th key={i} scope="col" className="px-3 py-1.5 text-left text-xs font-medium text-[#e2a32d] uppercase tracking-wider">{header}</th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="bg-gray-800/30 divide-y divide-gray-700">
+                    <tbody className="bg-[#212934]/50 divide-y divide-[#5c6f7e]">
                         {rows.map((row, i) => (
                             <tr key={i}>
                                 {row.map((cell, j) => (
@@ -43,7 +43,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
                         ))}
                          {rows.length === 0 && (
                             <tr>
-                                <td colSpan={headers.length} className="px-3 py-1.5 text-center text-gray-400">No data</td>
+                                <td colSpan={headers.length} className="px-3 py-1.5 text-center text-[#95aac0]">No data</td>
                             </tr>
                         )}
                     </tbody>
@@ -55,7 +55,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
 
   // Default to pre-formatted text for code or unparsable markdown
   return (
-    <pre className="bg-gray-800/70 p-3 my-2 rounded-md overflow-x-auto text-xs text-gray-200 border border-gray-700/50 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-900/50 font-mono">
+    <pre className="bg-[#212934] p-3 my-2 rounded-md overflow-x-auto text-xs text-gray-200 border border-[#5c6f7e] scrollbar-thin scrollbar-thumb-[#5c6f7e] scrollbar-track-[#333e48] font-mono">
       <code>{code}</code>
     </pre>
   );

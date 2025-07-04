@@ -34,7 +34,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900">
+    <div className="flex flex-col h-screen bg-[#212934]">
       <Header />
       <main className="flex-grow overflow-hidden flex flex-row">
         <div className="flex-grow overflow-hidden">

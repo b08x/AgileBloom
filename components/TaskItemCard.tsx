@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TrackedTask, TaskStatus, ExpertRole } from '../types';
 import { EXPERTS } from '../constants';
@@ -13,7 +14,7 @@ interface TaskItemCardProps {
 }
 
 const statusConfig: Record<TaskStatus, { icon: React.ReactNode; color: string; }> = {
-  [TaskStatus.ToDo]: { icon: <Circle size={14} />, color: 'text-blue-400' },
+  [TaskStatus.ToDo]: { icon: <Circle size={14} />, color: 'text-[#95aac0]' },
   [TaskStatus.InProgress]: { icon: <Settings2 size={14} className="animate-spin" style={{ animationDuration: '3s' }} />, color: 'text-yellow-400' },
   [TaskStatus.Done]: { icon: <Check size={14} />, color: 'text-green-400' },
 };
@@ -28,9 +29,9 @@ export const TaskItemCard: React.FC<TaskItemCardProps> = ({ task, onUpdateStatus
     const parentStory = storyId ? trackedStories.find(s => s.id === storyId) : null;
 
     return (
-        <div className="w-full text-left p-3 bg-gray-900/40 rounded-lg border border-gray-700/60 transition-all duration-200 space-y-2">
+        <div className="w-full text-left p-3 bg-[#333e48] rounded-lg border border-[#5c6f7e] transition-all duration-200 space-y-2">
              {parentStory && (
-                <div className="text-xs text-indigo-300 flex items-center gap-1.5 bg-indigo-900/30 px-2 py-1 rounded-full w-fit">
+                <div className="text-xs text-[#e2a32d] flex items-center gap-1.5 bg-[#e2a32d]/20 px-2 py-1 rounded-full w-fit">
                    <Link size={12}/>
                    From Story: #{parentStory.id.substring(0, 6)}
                 </div>
@@ -48,16 +49,16 @@ export const TaskItemCard: React.FC<TaskItemCardProps> = ({ task, onUpdateStatus
                 </button>
             </div>
 
-            <div className="mt-2 pt-2 border-t border-gray-700/40 flex justify-between items-center text-xs">
+            <div className="mt-2 pt-2 border-t border-[#5c6f7e] flex justify-between items-center text-xs">
                 <div className="flex items-center gap-2">
                      <span className={`flex items-center font-medium ${config.color}`}>
                         {config.icon}
                         <span className="ml-1.5">{status}</span>
                     </span>
                     {expert ? (
-                        <span className="flex items-center text-gray-400" title={`Assigned to ${expert.name}`}>
+                        <span className="flex items-center text-[#95aac0]" title={`Assigned to ${expert.name}`}>
                             {expert.emoji}
-                            <span className="ml-1 font-medium text-gray-300">{expert.name}</span>
+                            <span className="ml-1 font-medium text-gray-200">{expert.name}</span>
                         </span>
                     ) : (
                         <span className="flex items-center text-gray-500" title="Unassigned">
@@ -83,7 +84,7 @@ export const TaskItemCard: React.FC<TaskItemCardProps> = ({ task, onUpdateStatus
                         value={status}
                         onChange={(e) => onUpdateStatus(id, e.target.value as TaskStatus)}
                         disabled={isDisabled}
-                        className="bg-gray-700/80 border border-gray-600 rounded text-xs py-0.5 px-1 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors disabled:cursor-not-allowed"
+                        className="bg-[#5c6f7e] border border-[#95aac0] rounded text-xs py-0.5 px-1 focus:outline-none focus:ring-1 focus:ring-[#e2a32d] transition-colors disabled:cursor-not-allowed"
                         aria-label={`Change status for task: ${description}`}
                     >
                         {Object.values(TaskStatus).map(s => <option key={s} value={s}>{s}</option>)}

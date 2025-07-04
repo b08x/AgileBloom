@@ -44,17 +44,17 @@ export const ExpertTasksSidebar: React.FC = () => {
 
 
     return (
-        <div className="flex flex-col h-full w-full bg-gray-800/30 backdrop-blur-sm rounded-lg border border-gray-700/50">
-            <header className="p-4 border-b border-gray-700/50">
+        <div className="flex flex-col h-full w-full bg-[#333e48]/50 backdrop-blur-sm rounded-lg border border-[#5c6f7e]">
+            <header className="p-4 border-b border-[#5c6f7e]">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <ListChecks className="text-purple-300" size={20} />
-                        <h2 className="text-lg font-semibold text-purple-300">Current Tasks</h2>
+                        <ListChecks className="text-[#e2a32d]" size={20} />
+                        <h2 className="text-lg font-semibold text-[#e2a32d]">Current Tasks</h2>
                     </div>
                     <button
                         onClick={generateTasksFromContext}
                         disabled={isLoading || !topic}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs text-purple-300 bg-purple-900/40 hover:bg-purple-800/60 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#e2a32d] bg-[#e2a32d]/20 hover:bg-[#e2a32d]/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title={!topic ? "Start a discussion first" : "Generate a task backlog based on the current discussion context."}
                     >
                         <BrainCircuit size={14} />
@@ -63,7 +63,7 @@ export const ExpertTasksSidebar: React.FC = () => {
                 </div>
             </header>
             
-            <div className="p-2 border-b border-gray-700/50">
+            <div className="p-2 border-b border-[#5c6f7e]">
                 <div className="grid grid-cols-5 gap-1">
                     {TABS.map(({ label, value, emoji }) => {
                         const tasksForTab = trackedTasks.filter(t => {
@@ -79,10 +79,10 @@ export const ExpertTasksSidebar: React.FC = () => {
                             key={value}
                             onClick={() => setActiveTab(value)}
                             title={label}
-                            className={`relative flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-purple-500 ${
+                            className={`relative flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-[#e2a32d] ${
                                 activeTab === value
-                                    ? 'bg-purple-600 text-white font-semibold shadow-md'
-                                    : 'bg-gray-700/60 hover:bg-gray-600/80 text-gray-300'
+                                    ? 'bg-[#c36e26] text-white font-semibold shadow-md'
+                                    : 'bg-[#5c6f7e] hover:bg-[#95aac0] text-gray-200'
                             }`}
                         >
                             <span className="text-lg">{emoji}</span>
@@ -97,7 +97,7 @@ export const ExpertTasksSidebar: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-grow overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
+            <div className="flex-grow overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[#5c6f7e] scrollbar-track-[#212934]">
                 {filteredTasks.length > 0 ? (
                     <div className="space-y-2">
                         {filteredTasks.map(task => (
@@ -112,9 +112,9 @@ export const ExpertTasksSidebar: React.FC = () => {
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-4">
+                    <div className="flex flex-col items-center justify-center h-full text-center text-[#95aac0] p-4">
                         <ListTodo size={40} className="mb-3 opacity-50" />
-                        <h3 className="font-semibold text-gray-400">No Current Tasks</h3>
+                        <h3 className="font-semibold text-gray-200">No Current Tasks</h3>
                         <p className="text-xs">No 'To Do' or 'In Progress' tasks for {activeTab}.</p>
                     </div>
                 )}

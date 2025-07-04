@@ -190,16 +190,16 @@ export const Header: React.FC = () => {
   };
   
   return (
-    <header className="relative z-20 bg-gray-800/50 backdrop-blur-md shadow-lg p-3 sm:p-4 text-white flex justify-between items-center border-b border-gray-700/50">
+    <header className="relative z-20 bg-[#333e48]/80 backdrop-blur-md shadow-lg p-3 sm:p-4 text-white flex justify-between items-center border-b border-[#5c6f7e]">
       <div className="flex items-center space-x-2">
-        <img src="https://picsum.photos/seed/agilebloom/40/40" alt="AgileBloom Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-purple-500" />
-        <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">
-          Agile<span className="text-purple-400">Bloom</span> AI
+        <img src="https://picsum.photos/seed/agilebloom/40/40" alt="AgileBloom Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-[#e2a32d]" />
+        <h1 className="text-lg sm:text-2xl font-semibold tracking-tight text-gray-200">
+          Agile<span className="text-[#e2a32d]">Bloom</span> AI
         </h1>
       </div>
       {topic && (
-        <div className="hidden md:block text-center text-sm sm:text-base text-purple-300 truncate max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl" title={topic}>
-          Topic: <span className="font-medium text-gray-100">{topic}</span>
+        <div className="hidden md:block text-center text-sm sm:text-base text-[#95aac0] truncate max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl" title={topic}>
+          Topic: <span className="font-medium text-gray-200">{topic}</span>
         </div>
       )}
       <div className="flex items-center space-x-1 sm:space-x-2"> 
@@ -220,21 +220,21 @@ export const Header: React.FC = () => {
         </button>
         <button
           onClick={handleExportChat}
-          className="p-2 rounded-full hover:bg-blue-600/50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="p-2 rounded-full hover:bg-[#e2a32d]/20 transition-colors focus:outline-none focus:ring-2 focus:ring-[#e2a32d]"
           title="Export Chat as JSON"
         >
           <Download size={20} />
         </button>
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="p-2 rounded-full hover:bg-purple-600/50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="p-2 rounded-full hover:bg-[#e2a32d]/20 transition-colors focus:outline-none focus:ring-2 focus:ring-[#e2a32d]"
           title="Settings"
         >
           <Settings size={20} />
         </button>
         <button
           onClick={toggleHelpModal}
-          className="p-2 rounded-full hover:bg-purple-600/50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="p-2 rounded-full hover:bg-[#e2a32d]/20 transition-colors focus:outline-none focus:ring-2 focus:ring-[#e2a32d]"
           title="Help / Commands"
         >
           <HelpCircle size={20} />
@@ -252,12 +252,12 @@ export const Header: React.FC = () => {
         </button>
       </div>
       {showSettings && (
-        <div className="absolute top-16 right-4 mt-2 w-72 p-4 bg-gray-700/80 backdrop-blur-md rounded-lg shadow-xl z-50 border border-gray-600/50">
-          <h3 className="text-md font-semibold mb-3 text-purple-300">Settings</h3>
+        <div className="absolute top-16 right-4 mt-2 w-72 p-4 bg-[#333e48]/90 backdrop-blur-md rounded-lg shadow-xl z-50 border border-[#5c6f7e]">
+          <h3 className="text-md font-semibold mb-3 text-[#e2a32d]">Settings</h3>
           
           <div className="mb-4">
-            <label htmlFor="numThoughts" className="block text-sm font-medium text-gray-300 mb-1">
-              Thoughts per Expert: <span className="text-purple-400">{numThoughts}</span>
+            <label htmlFor="numThoughts" className="block text-sm font-medium text-[#95aac0] mb-1">
+              Thoughts per Expert: <span className="text-[#e2a32d]">{numThoughts}</span>
             </label>
             <input
               type="range"
@@ -266,24 +266,24 @@ export const Header: React.FC = () => {
               max="10"
               value={numThoughts}
               onChange={handleNumThoughtsChange}
-              className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              className="w-full h-2 bg-[#5c6f7e] rounded-lg appearance-none cursor-pointer accent-[#e2a32d]"
             />
           </div>
 
           <div className="mb-4">
             <div className="flex items-center justify-between">
-              <label htmlFor="autoModeToggle" className="text-sm font-medium text-gray-300">
+              <label htmlFor="autoModeToggle" className="text-sm font-medium text-[#95aac0]">
                 Auto Mode
               </label>
               <button
                 id="autoModeToggle"
                 onClick={toggleAutoMode}
                 className={`p-1 rounded-full transition-colors ${
-                  isAutoModeEnabled ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-600 hover:bg-gray-500'
+                  isAutoModeEnabled ? 'bg-green-500 hover:bg-green-600' : 'bg-[#5c6f7e] hover:bg-gray-500'
                 }`}
                 title={isAutoModeEnabled ? 'Disable Auto Mode' : 'Enable Auto Mode'}
               >
-                {isAutoModeEnabled ? <Zap size={18} className="text-white" /> : <ZapOff size={18} className="text-gray-300" />}
+                {isAutoModeEnabled ? <Zap size={18} className="text-white" /> : <ZapOff size={18} className="text-[#95aac0]" />}
               </button>
             </div>
           </div>
@@ -291,7 +291,7 @@ export const Header: React.FC = () => {
           {isAutoModeEnabled && (
             <div className="mb-4 pl-1">
               <label htmlFor="autoModeDelay" className="block text-xs font-medium text-gray-400 mb-1">
-                Auto Mode Delay: <span className="text-purple-400">{autoModeDelaySeconds}s</span>
+                Auto Mode Delay: <span className="text-[#e2a32d]">{autoModeDelaySeconds}s</span>
               </label>
               <input
                 type="range"
@@ -300,14 +300,14 @@ export const Header: React.FC = () => {
                 max={MAX_AUTO_MODE_DELAY_SECONDS}
                 value={autoModeDelaySeconds}
                 onChange={handleAutoModeDelayChange}
-                className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                className="w-full h-2 bg-[#5c6f7e] rounded-lg appearance-none cursor-pointer accent-[#e2a32d]"
               />
             </div>
           )}
 
           <button 
             onClick={() => setShowSettings(false)}
-            className="w-full mt-2 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full mt-2 px-3 py-1.5 text-sm bg-[#c36e26] hover:bg-[#c36e26]/90 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-[#e2a32d]"
           >
             Close
           </button>

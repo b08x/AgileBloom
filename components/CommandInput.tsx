@@ -144,7 +144,7 @@ export const CommandInput: React.FC = () => {
           id="command-suggestions-listbox"
           role="listbox"
           aria-activedescendant={`suggestion-item-${activeSuggestionIndex}`}
-          className="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto bg-gray-700/90 backdrop-blur-md rounded-lg shadow-xl z-30 border border-gray-600/70 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-gray-800"
+          className="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto bg-[#333e48]/90 backdrop-blur-md rounded-lg shadow-xl z-30 border border-[#5c6f7e] scrollbar-thin scrollbar-thumb-[#e2a32d] scrollbar-track-[#333e48]"
         >
           {suggestions.map((cmd, index) => (
             <div
@@ -152,23 +152,23 @@ export const CommandInput: React.FC = () => {
               id={`suggestion-item-${index}`}
               role="option"
               aria-selected={index === activeSuggestionIndex}
-              className={`p-3 cursor-pointer hover:bg-purple-600/50 transition-colors duration-100 ${
-                index === activeSuggestionIndex ? 'bg-purple-700/70' : ''
+              className={`p-3 cursor-pointer hover:bg-[#e2a32d]/20 transition-colors duration-100 ${
+                index === activeSuggestionIndex ? 'bg-[#e2a32d]/30' : ''
               }`}
               onClick={() => handleSuggestionClick(cmd)}
             >
               <div className="flex justify-between items-center">
-                <span className="font-medium text-sm text-purple-300">{cmd.name}</span>
-                {cmd.arguments && <span className="text-xs text-gray-400 ml-2 truncate">{cmd.arguments}</span>}
+                <span className="font-medium text-sm text-[#e2a32d]">{cmd.name}</span>
+                {cmd.arguments && <span className="text-xs text-[#95aac0] ml-2 truncate">{cmd.arguments}</span>}
               </div>
-              <p className="text-xs text-gray-300 mt-0.5 truncate">{cmd.description}</p>
+              <p className="text-xs text-gray-200 mt-0.5 truncate">{cmd.description}</p>
             </div>
           ))}
         </div>
       )}
 
       {uploadedFile && (
-        <div className="flex items-center justify-between text-xs text-purple-300 bg-gray-700/50 px-3 py-1.5 rounded-t-md border-b border-gray-600/50">
+        <div className="flex items-center justify-between text-xs text-[#e2a32d] bg-[#333e48]/80 px-3 py-1.5 rounded-t-md border-b border-[#5c6f7e]">
           <span className="truncate">
             Attached: <span className="font-medium">{uploadedFile.name}</span> 
             ({(uploadedFile.size / 1024).toFixed(1)} KB)
@@ -185,7 +185,7 @@ export const CommandInput: React.FC = () => {
           </button>
         </div>
       )}
-      <div className={`flex items-center space-x-2 bg-gray-800/60 backdrop-blur-md p-2 shadow-lg ${uploadedFile ? 'rounded-b-xl border-t-0' : 'rounded-xl'} border border-gray-700/50`}>
+      <div className={`flex items-center space-x-2 bg-[#333e48] backdrop-blur-md p-2 shadow-lg ${uploadedFile ? 'rounded-b-xl border-t-0' : 'rounded-xl'} border border-[#5c6f7e]`}>
         <FileUploadButton disabled={isInputDisabled || !!uploadedFile} />
         <textarea
           ref={textareaRef}
@@ -193,10 +193,10 @@ export const CommandInput: React.FC = () => {
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholderText}
-          className="flex-grow p-3 bg-transparent text-gray-100 placeholder-gray-400 focus:outline-none resize-none scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50 rounded-md min-h-[50px] max-h-[150px]"
+          className="flex-grow p-3 bg-transparent text-gray-200 placeholder-[#95aac0] focus:outline-none resize-none scrollbar-thin scrollbar-thumb-[#5c6f7e] scrollbar-track-[#333e48]/50 rounded-md min-h-[50px] max-h-[150px]"
           rows={1}
           disabled={isInputDisabled}
-          style={{caretColor: 'rgb(192, 132, 252)'}} 
+          style={{caretColor: '#e2a32d'}} 
           aria-label="Chat input"
           aria-autocomplete="list"
           aria-controls="command-suggestions-listbox"
@@ -206,7 +206,7 @@ export const CommandInput: React.FC = () => {
         <button
           type="submit"
           disabled={isSubmitDisabled}
-          className="p-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="p-3 rounded-lg bg-[#c36e26] text-white hover:bg-[#c36e26]/90 disabled:bg-[#5c6f7e] disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-[#e2a32d]"
           title={isSubmitDisabled && !inputText.trim() && !uploadedFile ? "Type a message or attach a file" : "Send (Enter)"}
           aria-label="Send message"
         >
@@ -214,8 +214,8 @@ export const CommandInput: React.FC = () => {
         </button>
       </div>
       <div className="flex justify-between items-center mt-1.5 ml-1">
-        <p className="text-xs text-gray-400">
-          Use <kbd className="px-1.5 py-0.5 text-xs font-semibold text-gray-300 bg-gray-700 border border-gray-600 rounded-md">Shift + Enter</kbd> for new line. Type <kbd className="px-1.5 py-0.5 text-xs font-semibold text-gray-300 bg-gray-700 border border-gray-600 rounded-md">/help</kbd> for commands.
+        <p className="text-xs text-[#95aac0]">
+          Use <kbd className="px-1.5 py-0.5 text-xs font-semibold text-gray-200 bg-[#333e48] border border-[#5c6f7e] rounded-md">Shift + Enter</kbd> for new line. Type <kbd className="px-1.5 py-0.5 text-xs font-semibold text-gray-200 bg-[#333e48] border border-[#5c6f7e] rounded-md">/help</kbd> for commands.
         </p>
         {isAutoModeEnabled && (
           <p className="text-xs text-green-400 font-medium animate-pulse pr-1">

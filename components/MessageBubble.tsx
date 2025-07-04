@@ -9,7 +9,7 @@ const CitationLink: React.FC<{ citation: SearchCitation }> = ({ citation }) => (
     href={citation.uri}
     target="_blank"
     rel="noopener noreferrer"
-    className="flex items-center text-xs text-purple-300 hover:text-purple-200 hover:underline transition-colors duration-150"
+    className="flex items-center text-xs text-[#e2a32d] hover:text-[#e2a32d]/80 transition-colors duration-150"
     title={citation.title}
   >
     <ExternalLink size={12} className="mr-1.5 flex-shrink-0" />
@@ -23,8 +23,8 @@ export const MessageBubble: React.FC<{ message: DiscussionMessage }> = React.mem
   const isUser = expert.name === ExpertRole.User;
 
   const bubbleClasses = isUser
-    ? "bg-purple-600/80 ml-auto"
-    : `${expert.bgColor}/${isError ? '70' : '80'} ${expert.textColor}`;
+    ? `${expert.bgColor} ml-auto`
+    : `${expert.bgColor}`;
   
   const containerClasses = `flex mb-3 animate-fadeIn ${isUser ? "justify-end" : "justify-start"}`;
 
@@ -48,38 +48,38 @@ export const MessageBubble: React.FC<{ message: DiscussionMessage }> = React.mem
       <div className={`max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-3 rounded-xl shadow-md ${bubbleClasses} backdrop-blur-sm`}>
         <div className="flex items-center mb-1.5">
           {!isUser && <span className="mr-2 text-xl">{expert.emoji}</span>}
-          <span className={`font-semibold text-sm ${isUser ? 'text-purple-200' : expert.textColor === 'text-gray-900' ? 'text-gray-700' : 'text-gray-200'}`}>
+          <span className="font-semibold text-sm text-[#e2a32d]">
             {expert.name}
           </span>
           {isUser && <span className="ml-2 text-xl">{expert.emoji}</span>}
         </div>
         {isError ? (
-           <p className="text-sm text-red-200 whitespace-pre-wrap">{text}</p>
+           <p className="text-sm text-red-300 whitespace-pre-wrap">{text}</p>
         ) : (
-           <p className="text-sm whitespace-pre-wrap">{text}</p>
+           <p className="text-sm whitespace-pre-wrap text-gray-200">{text}</p>
         )}
        
         {thoughts && thoughts.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-white/20">
-            <h4 className="text-xs font-semibold mb-1 opacity-80">Thoughts:</h4>
+          <div className="mt-2 pt-2 border-t border-[#5c6f7e]">
+            <h4 className="text-xs font-semibold mb-1 opacity-80 text-gray-200">Thoughts:</h4>
             <ul className="list-disc list-inside pl-1 space-y-0.5">
               {thoughts.map((thought, index) => (
-                <li key={index} className="text-xs opacity-90">{thought}</li>
+                <li key={index} className="text-xs opacity-90 text-gray-200">{thought}</li>
               ))}
             </ul>
           </div>
         )}
         {work && (
-          <div className="mt-2 pt-2 border-t border-white/20">
-            <h4 className="text-xs font-semibold mb-1 opacity-80">
+          <div className="mt-2 pt-2 border-t border-[#5c6f7e]">
+            <h4 className="text-xs font-semibold mb-1 opacity-80 text-gray-200">
               {isFishAnalysis ? "FISH Analysis:" : isScrumLeaderStoryResponse ? "Generated User Stories:" : "Work:"}
             </h4>
             <CodeBlock code={work} language={isFishAnalysis || isScrumLeaderStoryResponse ? "markdown" : "auto"} />
           </div>
         )}
         {searchCitations && searchCitations.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-white/20">
-            <h4 className="text-xs font-semibold mb-1 opacity-80">Sources:</h4>
+          <div className="mt-2 pt-2 border-t border-[#5c6f7e]">
+            <h4 className="text-xs font-semibold mb-1 opacity-80 text-gray-200">Sources:</h4>
             <ul className="space-y-1">
               {searchCitations.map((citation, index) => (
                 <li key={index}>
@@ -89,7 +89,7 @@ export const MessageBubble: React.FC<{ message: DiscussionMessage }> = React.mem
             </ul>
           </div>
         )}
-        <div className={`text-xs mt-2 opacity-60 ${isUser ? "text-right" : "text-left"}`}>
+        <div className={`text-xs mt-2 text-[#95aac0] ${isUser ? "text-right" : "text-left"}`}>
           {formattedTimestamp}
         </div>
       </div>

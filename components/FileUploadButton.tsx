@@ -94,7 +94,7 @@ export const FileUploadButton: React.FC<{ disabled?: boolean }> = ({ disabled })
         type="button"
         onClick={triggerFileInput}
         disabled={disabled}
-        className="p-3 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+        className="p-3 rounded-lg bg-[#5c6f7e] text-gray-200 hover:bg-[#95aac0] disabled:bg-[#5c6f7e]/50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-[#e2a32d]"
         title="Attach file (image, .txt, or .md)"
         aria-label="Attach file"
       >

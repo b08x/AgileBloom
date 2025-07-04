@@ -2,12 +2,12 @@
 import { Expert, ExpertRole, Command, AiProvider } from './types';
 
 export const EXPERTS: Record<ExpertRole, Expert> = {
-  [ExpertRole.System]: { name: ExpertRole.System, emoji: "⚙️", description: "System messages and announcements.", bgColor: "bg-gray-700", textColor: "text-gray-300" },
-  [ExpertRole.User]: { name: ExpertRole.User, emoji: "👤", description: "The user facilitating the discussion.", bgColor: "bg-blue-600", textColor: "text-white" },
-  [ExpertRole.Engineer]: { name: ExpertRole.Engineer, emoji: "👨‍💻", description: "A neat and creative programmer with expertise in Bash, Python, and Ansible.", bgColor: "bg-green-600", textColor: "text-white" },
-  [ExpertRole.Artist]: { name: ExpertRole.Artist, emoji: "🧑‍🎨", description: "A design expert proficient in CSS, JS, and HTML.", bgColor: "bg-pink-600", textColor: "text-white" },
-  [ExpertRole.Linguist]: { name: ExpertRole.Linguist, emoji: "🧑‍✒️", description: "A pragmatic devil's advocate with expertise in linguistics, design patterns and the Ruby language.", bgColor: "bg-yellow-500", textColor: "text-gray-900" },
-  [ExpertRole.ScrumLeader]: { name: ExpertRole.ScrumLeader, emoji: "🤔", description: "Manages the product backlog and time-boxing.", bgColor: "bg-indigo-600", textColor: "text-white" },
+  [ExpertRole.System]: { name: ExpertRole.System, emoji: "⚙️", description: "System messages and announcements.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+  [ExpertRole.User]: { name: ExpertRole.User, emoji: "👤", description: "The user facilitating the discussion.", bgColor: "bg-[#c36e26]", textColor: "text-gray-200" },
+  [ExpertRole.Engineer]: { name: ExpertRole.Engineer, emoji: "👨‍💻", description: "A neat and creative programmer with expertise in Bash, Python, and Ansible.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+  [ExpertRole.Artist]: { name: ExpertRole.Artist, emoji: "🧑‍🎨", description: "A design expert proficient in CSS, JS, and HTML.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+  [ExpertRole.Linguist]: { name: ExpertRole.Linguist, emoji: "🧑‍✒️", description: "A pragmatic devil's advocate with expertise in linguistics, design patterns and the Ruby language.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+  [ExpertRole.ScrumLeader]: { name: ExpertRole.ScrumLeader, emoji: "🤔", description: "Manages the product backlog and time-boxing.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
 };
 
 export const AVAILABLE_COMMANDS: Command[] = [

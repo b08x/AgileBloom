@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { useAgileBloomChat } from '../hooks/useAgileBloomChat';
@@ -40,9 +39,9 @@ const ExpertQuestionGroup: React.FC<{
   };
 
   return (
-    <div className="bg-gray-800/20 rounded-lg border border-gray-700/30 overflow-hidden">
+    <div className="bg-[#333e48]/50 rounded-lg border border-[#5c6f7e] overflow-hidden">
       <header 
-        className="p-3 flex items-center justify-between cursor-pointer hover:bg-gray-700/30 transition-colors"
+        className="p-3 flex items-center justify-between cursor-pointer hover:bg-[#333e48] transition-colors"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
         <div className="flex items-center gap-2">
@@ -52,17 +51,17 @@ const ExpertQuestionGroup: React.FC<{
                 onChange={handleSelectAllToggle}
                 onClick={(e) => e.stopPropagation()} // Prevent header click from toggling collapse
                 disabled={isDisabled}
-                className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 cursor-pointer disabled:cursor-not-allowed"
+                className="h-4 w-4 rounded bg-[#5c6f7e] border-[#95aac0] text-[#c36e26] focus:ring-[#e2a32d] cursor-pointer disabled:cursor-not-allowed"
                 title={`Select all questions from ${expertRole}`}
             />
             <span className="text-lg">{EXPERTS[expertRole].emoji}</span>
             <span className="font-semibold text-gray-200">{expertRole}</span>
-            <span className="text-xs font-mono bg-gray-700/50 text-purple-300 px-1.5 py-0.5 rounded-full">{expertQuestions.length}</span>
+            <span className="text-xs font-mono bg-[#5c6f7e] text-[#e2a32d] px-1.5 py-0.5 rounded-full">{expertQuestions.length}</span>
         </div>
-        <ChevronDown size={20} className={`text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+        <ChevronDown size={20} className={`text-[#95aac0] transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
       </header>
       {!isCollapsed && (
-        <div className="p-2 space-y-2 border-t border-gray-700/30">
+        <div className="p-2 space-y-2 border-t border-[#5c6f7e]">
           {expertQuestions.sort((a, b) => a.timestamp - b.timestamp).map(q => (
             <QuestionItemCard
               key={q.id}
@@ -142,12 +141,12 @@ export const TrackedQuestionsSidebar: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full w-full">
-            <header className="p-4 border-b border-gray-700/50">
-                <h2 className="text-lg font-semibold text-purple-300">Tracked Discussion Points</h2>
-                <p className="text-xs text-gray-400">Questions raised by the AI team during discussion.</p>
+            <header className="p-4 border-b border-[#5c6f7e]">
+                <h2 className="text-lg font-semibold text-[#e2a32d]">Tracked Discussion Points</h2>
+                <p className="text-xs text-[#95aac0]">Questions raised by the AI team during discussion.</p>
             </header>
 
-            <div className="flex-grow overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50 space-y-3">
+            <div className="flex-grow overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[#5c6f7e] scrollbar-track-[#212934] space-y-3">
                 {trackedQuestions.length > 0 ? (
                     EXPERT_ROUND_ROBIN_ORDER.map(expertRole => (
                       <ExpertQuestionGroup
@@ -165,16 +164,16 @@ export const TrackedQuestionsSidebar: React.FC = () => {
                       />
                     ))
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-4">
+                    <div className="flex flex-col items-center justify-center h-full text-center text-[#95aac0] p-4">
                         <Lightbulb size={40} className="mb-3 opacity-50" />
-                        <h3 className="font-semibold text-gray-400">No Questions Found</h3>
+                        <h3 className="font-semibold text-gray-200">No Questions Found</h3>
                         <p className="text-xs mt-2">New questions will appear here as the AI team discusses the topic.</p>
                     </div>
                 )}
             </div>
 
             {selectedQuestionIds.length > 0 && (
-                 <div className="flex-shrink-0 p-3 border-t border-gray-700/50 bg-gray-900/30 animate-fadeIn">
+                 <div className="flex-shrink-0 p-3 border-t border-[#5c6f7e] bg-[#212934] animate-fadeIn">
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="text-sm font-semibold text-gray-200">
                             Bulk Actions ({selectedQuestionIds.length} selected)
@@ -198,7 +197,7 @@ export const TrackedQuestionsSidebar: React.FC = () => {
                            <button 
                                 onClick={() => handleBulkStatusChange(QuestionStatus.Addressing)} 
                                 disabled={isProcessing}
-                                className="flex items-center justify-center gap-1.5 p-2 bg-blue-800/60 hover:bg-blue-700/80 text-blue-300 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center justify-center gap-1.5 p-2 bg-[#e2a32d]/20 hover:bg-[#e2a32d]/30 text-[#e2a32d] rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <MessageSquare size={14}/> Discuss
                             </button>
