@@ -223,7 +223,7 @@ npm run dev
 
 ### ENVIRONMENT CONFIGURATION MATRIX
 
-```
+```shell
 ┌─────────────────────┬────────────────────────────────────────────────────┐
 │ VARIABLE            │ COMPUTATIONAL FUNCTION                            │
 ├─────────────────────┼────────────────────────────────────────────────────┤
@@ -245,7 +245,7 @@ npm run dev
 
 ### COMMAND EXECUTION MATRIX
 
-```
+```shell
 ┌─────────────────────┬────────────────────────────────────────────────────┐
 │ COMMAND             │ COMPUTATIONAL OPERATION                            │
 ├─────────────────────┼────────────────────────────────────────────────────┤
@@ -268,7 +268,7 @@ npm run dev
 
 #### AUTO MODE COMPUTATIONAL PROCESS
 
-```
+```shell
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        AUTO MODE ARCHITECTURE                          │
 │                                                                         │
@@ -316,117 +316,147 @@ npm run dev
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Use Cases & Examples
+## COMPUTATIONAL USE CASE SCENARIOS
 
-### 1. Solo Developer - New Project Planning
+### SCENARIO 1: SOLO DEVELOPER PROJECT INITIALIZATION
 
-**Scenario**: Planning a personal finance tracking app
+**OPERATIONAL PARAMETERS**:
+
+- **TARGET SYSTEM**: Personal finance tracking web application
+- **TECHNOLOGY STACK**: React-based frontend architecture
+- **FUNCTIONAL REQUIREMENTS**: Expense tracking, income monitoring, budget goal management
+
+**COMMAND EXECUTION SEQUENCE**:
 
 ```bash
-# Initial setup
-Topic: "Personal finance tracking web application"
-Context: "Want to build a React app to track expenses, income, and budget goals"
+# System initialization
+TOPIC_INPUT: "Personal finance tracking web application"
+CONTEXT_INPUT: "React application for expense/income/budget tracking"
 
-# Example discussion flow
+# Expert orchestration protocol
 /ask What are the core features needed for an MVP?
 /suggest Starting with expense tracking before adding advanced features
 /direction Focus on user experience and data privacy
-/questions                # Review captured discussion points
-/stories                  # Convert insights to user stories
-/breakdown {story_id}     # Break down priority stories into tasks
+/questions                # Question state extraction
+/stories                  # User story synthesis
+/breakdown {story_id}     # Task decomposition
 ```
 
-**Expected Outcome**:
+**COMPUTATIONAL OUTPUT METRICS**:
 
-- 8-12 user stories covering core functionality
-- 25-40 specific development tasks
-- Clear implementation priorities
-- Technical architecture recommendations
+- **USER STORIES**: 8-12 structured narrative specifications
+- **DEVELOPMENT TASKS**: 25-40 atomic implementation units
+- **PRIORITY MATRIX**: Implementation sequence optimization
+- **ARCHITECTURE SPECIFICATIONS**: Technical design recommendations
 
-### 2. Team Lead - Feature Planning Session
+### SCENARIO 2: TEAM LEAD FEATURE PLANNING PROTOCOL
 
-**Scenario**: Planning authentication system for existing app
+**OPERATIONAL PARAMETERS**:
+
+- **TARGET SYSTEM**: Multi-factor authentication implementation
+- **SECURITY REQUIREMENTS**: 2FA integration with existing user system
+- **CONSTRAINT SPECIFICATIONS**: Backward compatibility maintenance
+
+**COMMAND EXECUTION SEQUENCE**:
 
 ```bash
-# Team discussion
-Topic: "Multi-factor authentication implementation"
-Context: "Adding 2FA to existing user system, need secure and user-friendly approach"
+# Security analysis initialization
+TOPIC_INPUT: "Multi-factor authentication implementation"
+CONTEXT_INPUT: "2FA integration with security and UX optimization"
 
-# Guided exploration
+# Expert consultation protocol
 /ask What security considerations should we prioritize?
-/elaborate Engineer     # Get technical implementation details
-/elaborate Artist       # Understand UX implications
+/elaborate Engineer     # Technical implementation analysis
+/elaborate Artist       # UX impact assessment
 /insight Current users prefer email-based verification
 /direction Must maintain backward compatibility
-/analyze {auth_story}   # Deep analysis of critical stories
+/analyze {auth_story}   # FISH framework analysis
 ```
 
-**Expected Outcome**:
+**COMPUTATIONAL OUTPUT METRICS**:
 
-- Security-first user stories
-- UX-focused authentication flows
-- Technical implementation tasks
-- Risk assessment and mitigation strategies
+- **SECURITY STORIES**: Risk-focused user narratives
+- **UX FLOWS**: Authentication user experience specifications
+- **IMPLEMENTATION TASKS**: Technical execution units
+- **RISK ASSESSMENT**: Mitigation strategy framework
 
-### 3. Startup - Product Discovery
+### SCENARIO 3: STARTUP PRODUCT DISCOVERY ENGINE
 
-**Scenario**: Exploring market fit for new productivity tool
+**OPERATIONAL PARAMETERS**:
+
+- **TARGET SYSTEM**: AI-powered task prioritization tool
+- **MARKET ANALYSIS**: Knowledge worker productivity optimization
+- **VALIDATION REQUIREMENTS**: Market fit assessment
+
+**COMMAND EXECUTION SEQUENCE**:
 
 ```bash
-# Discovery session  
-Topic: "AI-powered task prioritization tool"
-Context: "Helping knowledge workers focus on high-impact activities"
+# Product discovery initialization
+TOPIC_INPUT: "AI-powered task prioritization tool"
+CONTEXT_INPUT: "Knowledge worker productivity and high-impact activity focus"
 
-# Market and user exploration
+# Market validation protocol
 /ask What problems do current productivity tools fail to solve?
 /dataset "User research shows 73% struggle with task prioritization"
 /insight Users want automation but fear losing control
 /suggest Gradual AI assistance with user override capabilities
-/backlog               # Review generated product backlog
-/sprint-planning       # Plan initial development sprint
+/backlog               # Product backlog health analysis
+/sprint-planning       # Development sprint initialization
 ```
 
-**Expected Outcome**:
+**COMPUTATIONAL OUTPUT METRICS**:
 
-- Market-validated user stories
-- Feature prioritization framework
-- Initial product roadmap
-- Sprint-ready development tasks
+- **MARKET STORIES**: Validated user narrative specifications
+- **FEATURE MATRIX**: Priority-based functionality framework
+- **PRODUCT ROADMAP**: Development timeline optimization
+- **SPRINT TASKS**: Implementation-ready development units
 
-### 4. Open Source Contributor - Issue Analysis
+### SCENARIO 4: OPEN SOURCE OPTIMIZATION ANALYSIS
 
-**Scenario**: Contributing to complex open source project
+**OPERATIONAL PARAMETERS**:
+
+- **TARGET SYSTEM**: Performance optimization for large dataset processing
+- **ISSUE SPECIFICATION**: GitHub issue #1247 - API response degradation
+- **PERFORMANCE METRICS**: 50ms (100 records) → 8s (10k records)
+
+**COMMAND EXECUTION SEQUENCE**:
 
 ```bash
-# Issue exploration
-Topic: "Performance optimization for large dataset processing"
-Context: "GitHub issue #1247 - API response times degrade with 10k+ records"
+# Performance analysis initialization
+TOPIC_INPUT: "Performance optimization for large dataset processing"
+CONTEXT_INPUT: "GitHub issue #1247 - API response times degrade with 10k+ records"
 
-# Technical deep dive
+# Technical deep-dive protocol
 /ask What are the primary bottlenecks in large dataset handling?
 /debug "API response times: 50ms (100 records) -> 8s (10k records)"
-/elaborate Engineer     # Technical solutions
-/elaborate Linguist     # Code quality considerations
-/show-work Engineer     # Implementation approach
+/elaborate Engineer     # Technical solution generation
+/elaborate Linguist     # Code quality analysis
+/show-work Engineer     # Implementation approach display
 ```
 
-**Expected Outcome**:
+**COMPUTATIONAL OUTPUT METRICS**:
 
-- Root cause analysis
-- Technical solution options
-- Implementation task breakdown
-- Testing and validation strategy
+- **ROOT CAUSE ANALYSIS**: Bottleneck identification matrix
+- **SOLUTION OPTIONS**: Technical implementation alternatives
+- **TASK BREAKDOWN**: Implementation unit specifications
+- **VALIDATION STRATEGY**: Testing and verification framework
 
-### 5. Learning Project - Technology Exploration
+### SCENARIO 5: LEARNING PROJECT ARCHITECTURE EXPLORATION
 
-**Scenario**: Learning microservices architecture
+**OPERATIONAL PARAMETERS**:
+
+- **TARGET SYSTEM**: Microservices architecture for e-commerce platform
+- **EDUCATIONAL OBJECTIVE**: Monolithic to microservices conversion
+- **LEARNING FRAMEWORK**: Best practices acquisition
+
+**COMMAND EXECUTION SEQUENCE**:
 
 ```bash
-# Learning-focused discussion
-Topic: "Microservices architecture for e-commerce platform"
-Context: "Converting monolithic app to microservices, learning best practices"
+# Educational exploration initialization
+TOPIC_INPUT: "Microservices architecture for e-commerce platform"
+CONTEXT_INPUT: "Converting monolithic app to microservices, learning best practices"
 
-# Educational exploration
+# Knowledge acquisition protocol
 /ask What are the key principles of microservice design?
 /suggest Starting with user service and product catalog separation
 /elaborate Scrum Leader  # Project management implications
@@ -434,98 +464,238 @@ Context: "Converting monolithic app to microservices, learning best practices"
 /game Engineer, Linguist, What would Martin Fowler say about our approach?
 ```
 
-**Expected Outcome**:
+**COMPUTATIONAL OUTPUT METRICS**:
 
-- Educational user stories
-- Hands-on learning tasks
-- Best practice implementation steps
-- Progressive complexity roadmap
+- **EDUCATIONAL STORIES**: Learning-focused user narratives
+- **HANDS-ON TASKS**: Practical implementation exercises
+- **BEST PRACTICE STEPS**: Implementation methodology framework
+- **COMPLEXITY ROADMAP**: Progressive learning pathway optimization
 
-## Technical Architecture
+## TECHNICAL ARCHITECTURE SPECIFICATIONS
 
-### State Management
+### STATE MANAGEMENT COMPUTATIONAL FRAMEWORK
 
-- **Zustand**: Centralized state with discussion tracking
-- **Persistent Memory**: Context retention across sessions
-- **Rate Limiting**: Built-in API protection
+```mermaid
+graph TB
+    A[ZUSTAND STORE] --> B[CENTRALIZED STATE MANAGEMENT]
+    B --> C[DISCUSSION TRACKING]
+    B --> D[PERSISTENT MEMORY]
+    B --> E[RATE LIMITING PROTECTION]
+    
+    C --> F[MESSAGE ARRAY]
+    C --> G[EXPERT ROTATION STATE]
+    C --> H[AUTO MODE STATUS]
+    
+    D --> I[CONTEXT RETENTION]
+    D --> J[SESSION PERSISTENCE]
+    D --> K[MEMORY ENTRY LIMITS]
+    
+    E --> L[API CALL THROTTLING]
+    E --> M[REQUEST QUEUE MANAGEMENT]
+    E --> N[BACKOFF STRATEGIES]
+```
 
-### AI Integration
-
-- **Multi-Provider**: Google Gemini, OpenAI, Mistral, OpenRouter
-- **Image Support**: Visual content analysis
-- **JSON Responses**: Structured expert outputs
-- **Error Recovery**: Retry logic with exponential backoff
-
-### Component Structure
+### AI INTEGRATION COMPUTATIONAL ARCHITECTURE
 
 ```shell
-├── components/          # React UI components
-│   ├── ChatInterface    # Main conversation interface
-│   ├── SetupPage        # AI provider configuration
-│   └── Sidebars/        # Question, task, and story management
-├── hooks/               # Custom React hooks
-├── services/            # AI provider integrations
-├── store/               # Zustand state management
-└── types/               # TypeScript definitions
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       AI PROVIDER INTEGRATION LAYER                    │
+│                                                                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
+│  │   GOOGLE    │  │   OPENAI    │  │   MISTRAL   │  │ OPENROUTER  │   │
+│  │   GEMINI    │  │     GPT     │  │     AI      │  │  GATEWAY    │   │
+│  │             │  │             │  │             │  │             │   │
+│  │ Flash/Pro/  │  │ GPT-3.5/4   │  │ 7B/8x7B     │  │ Multi-Model │   │
+│  │ Lite Models │  │ Models      │  │ Models      │  │ Access      │   │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘   │
+│         ↓                ↓                ↓                ↓           │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                 UNIFIED API INTERFACE                          │   │
+│  │ ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │   │
+│  │ │   IMAGE     │  │    JSON     │  │   ERROR     │            │   │
+│  │ │  SUPPORT    │  │  RESPONSE   │  │  RECOVERY   │            │   │
+│  │ │             │  │ STRUCTURED  │  │ EXPONENTIAL │            │   │
+│  │ │ Visual      │  │ Expert      │  │ Backoff     │            │   │
+│  │ │ Analysis    │  │ Outputs     │  │ Retry Logic │            │   │
+│  │ └─────────────┘  └─────────────┘  └─────────────┘            │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Development
+### COMPONENT STRUCTURE HIERARCHY
 
-### Available Scripts
+```shell
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      REACT COMPONENT ARCHITECTURE                       │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐│
+│  │                            ROOT LAYER                               ││
+│  │ ┌─────────────┐     ┌─────────────┐     ┌─────────────┐             ││
+│  │ │    APP      │────▶│   ROUTER    │────▶│   STAGE     │           ││
+│  │ │ COMPONENT   │     │  HANDLER    │     │  MANAGER    │             ││
+│  │ └─────────────┘     └─────────────┘     └─────────────┘             ││
+│  └─────────────────────────────────────────────────────────────────────┘│
+│                                    ↓                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐│
+│  │                        INTERFACE LAYER                              ││
+│  │ ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │ │    CHAT     │  │   SETUP     │  │  HEADER     │  │  SIDEBAR    │  │
+│  │ │ INTERFACE   │  │    PAGE     │  │ COMPONENT   │  │ COMPONENTS  │  │
+│  │ │             │  │             │  │             │  │             │  │
+│  │ │Conversation │  │AI Provider  │  │Navigation   │  │Question/Task│  │
+│  │ │Management   │  │Config       │  │Controls     │  │Story Mgmt   │  │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                    ↓                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │                         SERVICE LAYER                               │ │
+│  │ ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │ │   HOOKS     │  │  SERVICES   │  │    STORE    │  │    TYPES    │  │
+│  │ │             │  │             │  │             │  │             │  │
+│  │ │Custom React │  │AI Provider  │  │Zustand      │  │TypeScript   │  │
+│  │ │Hooks        │  │Integrations │  │State Mgmt   │  │Definitions  │  │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### DEPENDENCY COMPUTATIONAL MATRIX
+
+```shell
+┌─────────────────────┬────────────────────────────────────────────────────┐
+│ DEPENDENCY          │ COMPUTATIONAL FUNCTION                             │
+├─────────────────────┼────────────────────────────────────────────────────┤
+│ react@19.1.0        │ Core UI rendering engine                           │
+│ react-dom@19.1.0    │ DOM manipulation interface                         │
+│ zustand@5.0.5       │ State management computational framework           │
+│ uuid@11.1.0         │ Unique identifier generation                       │
+│ @google/genai@1.4.0 │ Google Gemini API integration                      │
+│ ai@3.2.36           │ AI provider abstraction layer                      │
+│ @ai-sdk/mistral     │ Mistral AI integration interface                   │
+│ openai@4.52.7       │ OpenAI API integration interface                   │
+│ lucide-react@0.513  │ Icon component library                             │
+│ typescript@5.7.2    │ Type safety and compilation                        │
+│ vite@6.2.0          │ Build system and development server                │
+└─────────────────────┴────────────────────────────────────────────────────┘
+```
+
+## DEVELOPMENT OPERATIONAL PROTOCOLS
+
+### BUILD SYSTEM EXECUTION COMMANDS
+
+```
+┌─────────────────────┬────────────────────────────────────────────────────┐
+│ COMMAND             │ COMPUTATIONAL OPERATION                            │
+├─────────────────────┼────────────────────────────────────────────────────┤
+│ npm run dev         │ Development server initialization (port 5173)      │
+│ npm run build       │ Production bundle compilation and optimization     │
+│ npm run preview     │ Production build verification and testing          │
+└─────────────────────┴────────────────────────────────────────────────────┘
+```
+
+### CONTRIBUTION COMPUTATIONAL WORKFLOW
+
+```mermaid
+graph LR
+    A[REPOSITORY FORK] --> B[FEATURE BRANCH CREATION]
+    B --> C[CODE IMPLEMENTATION]
+    C --> D[COMMIT GENERATION]
+    D --> E[BRANCH PUSH OPERATION]
+    E --> F[PULL REQUEST CREATION]
+    F --> G[CODE REVIEW PROCESS]
+    G --> H[MERGE INTEGRATION]
+```
+
+**BRANCH CREATION PROTOCOL**:
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production  
-npm run preview  # Preview production build
+git checkout -b feature/computational-enhancement
 ```
 
-### Contributing
+**COMMIT MESSAGE SPECIFICATION**:
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+```bash
+git commit -m 'feat: implement expert orchestration optimization'
+```
 
-## Troubleshooting
+**REMOTE PUSH OPERATION**:
 
-### Common Issues
+```bash
+git push origin feature/computational-enhancement
+```
 
-**AI Not Responding**
+## TROUBLESHOOTING COMPUTATIONAL DIAGNOSTICS
 
-- Verify API key configuration
-- Check network connectivity
-- Review browser console for errors
+### ERROR RESOLUTION MATRIX
 
-**Rate Limiting**
+```shell
+┌─────────────────────┬────────────────────────────────────────────────────┐
+│ ERROR TYPE          │ DIAGNOSTIC PROTOCOL                                │
+├─────────────────────┼────────────────────────────────────────────────────┤
+│ AI_NOT_RESPONDING   │ 1. API key validation                              │
+│                     │ 2. Network connectivity verification               │
+│                     │ 3. Browser console error analysis                  │
+├─────────────────────┼────────────────────────────────────────────────────┤
+│ RATE_LIMITING       │ 1. Built-in protection: 5 messages/10 seconds      │
+│                     │ 2. Cooldown period enforcement                     │
+│                     │ 3. API plan upgrade consideration                  │
+├─────────────────────┼────────────────────────────────────────────────────┤
+│ MEMORY_OVERFLOW     │ 1. `/clear` command execution                      │
+│                     │ 2. Application restart procedure                   │
+│                     │ 3. Memory context limit: 20 entries                │
+├─────────────────────┼────────────────────────────────────────────────────┤
+│ FILE_UPLOAD_FAILURE │ 1. File size validation: <5MB                      │
+│                     │ 2. Format verification: PNG/JPG/GIF/WebP/TXT/MD    │
+│                     │ 3. Browser console error inspection                │
+└─────────────────────┴────────────────────────────────────────────────────┘
+```
 
-- Built-in protection limits 5 messages per 10 seconds
-- Wait for cooldown period
-- Consider upgrading API plan
+### SYSTEM PERFORMANCE MONITORING
 
-**Memory Issues**
+```shell
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      PERFORMANCE METRICS DASHBOARD                      │
+│                                                                         │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                │
+│  │ API LATENCY │     │ MEMORY USAGE│     │ERROR RATES  │                │
+│  │             │     │             │     │             │                │
+│  │ <2000ms     │     │ <100MB      │     │ <1%         │                │
+│  │ Target      │     │ Target      │     │ Target      │                │
+│  └─────────────┘     └─────────────┘     └─────────────┘                │
+│         ↓                    ↓                    ↓                     │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                │
+│  │ RESPONSE    │     │ STATE SIZE  │     │ UPTIME      │                │
+│  │ TIME        │     │ MONITORING  │     │ TRACKING    │                │
+│  │ TRACKING    │     │             │     │             │                │
+│  └─────────────┘     └─────────────┘     └─────────────┘                │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-- Clear chat with `/clear` command
-- Restart application if needed
-- Memory context limited to 20 entries
+## LICENSING AND SUPPORT SPECIFICATIONS
 
-**File Upload Problems**
+**LICENSE**: MIT License - Complete terms available in LICENSE file
 
-- Ensure files under 5MB
-- Supported formats: PNG, JPG, GIF, WebP, TXT, MD
-- Check browser console for detailed errors
+**SUPPORT CHANNELS**:
 
-## License
+- **GitHub Issues**: Bug reports and feature request submissions
+- **GitHub Discussions**: Community Q&A and collaborative ideation
+- **Documentation**: Comprehensive implementation guides in `/docs` directory
 
-MIT License - see LICENSE file for details.
+## SYSTEM IDENTIFICATION
 
-## Support
-
-- GitHub Issues: Report bugs and feature requests
-- Discussions: Community Q&A and ideas
-- Documentation: Comprehensive guides in `/docs`
+```shell
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          AGILEBLOOM SYSTEM                              │
+│                                                                         │
+│  COMPUTATIONAL MISSION: Transform abstract project concepts into        │
+│  structured, implementable development specifications through           │
+│  AI-powered expert orchestration and systematic analysis frameworks.    │
+│                                                                         │
+│  PRIMARY FUNCTION: Agile methodology automation via artificial          │
+│  intelligence collaborative discussion facilitation.                    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-**AgileBloom** - Transforming ideas into actionable plans through AI-powered Agile collaboration.
-EOF < /dev/null
+**AGILEBLOOM**: AI-Powered Computational Framework for Agile Development Orchestration
