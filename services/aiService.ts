@@ -305,9 +305,30 @@ export async function getAiResponse(
     
     try {
         const result = await withRetry(aiCall);
-         if (!result.expert || !EXPERTS[result.expert] || !result.message) {
-            throw new Error(`Received malformed JSON response from AI. Structure: ${Object.keys(result)}.`);
+
+        // More robust validation and recovery
+        if (!result || typeof result !== 'object') {
+            throw new Error("AI response is not a valid object.");
         }
+        if (!result.expert || !EXPERTS[result.expert]) {
+            throw new Error(`AI response is missing or has an invalid 'expert' field. Response: ${JSON.stringify(result)}`);
+        }
+        if (typeof result.message !== 'string') {
+            console.warn("AI response 'message' field is not a string. Attempting to recover.", result);
+            if (result.tasks && Array.isArray(result.tasks) && result.tasks.length > 0) {
+                result.message = `Generated ${result.tasks.length} task(s).`;
+            } else if (result.stories && Array.isArray(result.stories) && result.stories.length > 0) {
+                result.message = `Generated ${result.stories.length} story(s).`;
+            } else {
+                result.message = "[AI returned a non-text response message]";
+            }
+        }
+
+        if (result.work && typeof result.work !== 'string') {
+            console.warn(`AI response 'work' field is not a string. Stringifying it.`, result.work);
+            result.work = JSON.stringify(result.work, null, 2);
+        }
+
         if (emulateExpertAs && result.expert !== emulateExpertAs) {
             console.warn(`AI was asked to emulate ${emulateExpertAs} but responded as ${result.expert}. Using AI's choice.`);
         }

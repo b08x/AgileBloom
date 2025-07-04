@@ -4,8 +4,8 @@ import useAgileBloomStore from '../store/useAgileBloomStore';
 import { useAgileBloomChat } from '../hooks/useAgileBloomChat';
 import { QuestionItemCard } from './QuestionItemCard';
 import { QuestionStatus, ExpertRole } from '../types';
-import { EXPERTS, EXPERT_ROUND_ROBIN_ORDER, ID_PREFIX_LENGTH_QUESTIONS } from '../constants';
-import { Lightbulb, ChevronDown, CheckSquare, XSquare, Loader2 } from 'lucide-react';
+import { EXPERTS, EXPERT_ROUND_ROBIN_ORDER } from '../constants';
+import { Lightbulb, ChevronDown, CheckSquare, XSquare, Loader2, MessageSquare } from 'lucide-react';
 
 // An ExpertGroup component to keep the main component cleaner
 const ExpertQuestionGroup: React.FC<{
@@ -15,10 +15,11 @@ const ExpertQuestionGroup: React.FC<{
   onToggleSelection: (id: string) => void;
   onSelectAll: (ids: string[]) => void;
   onDeselectAll: (ids: string[]) => void;
-  onQuestionClick: (id: string) => void;
+  onDiscuss: (id: string) => void;
+  onMarkAddressed: (id: string) => void;
   onDismiss: (id: string) => void;
   isDisabled: boolean;
-}> = ({ expertRole, questions, selectedQuestionIds, onToggleSelection, onSelectAll, onDeselectAll, onQuestionClick, onDismiss, isDisabled }) => {
+}> = ({ expertRole, questions, selectedQuestionIds, onToggleSelection, onSelectAll, onDeselectAll, onDiscuss, onMarkAddressed, onDismiss, isDisabled }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   const expertQuestions = useMemo(() => questions.filter(q => q.expertRole === expertRole), [questions, expertRole]);
@@ -68,7 +69,8 @@ const ExpertQuestionGroup: React.FC<{
               question={q}
               isSelected={selectedQuestionIds.includes(q.id)}
               onToggleSelection={onToggleSelection}
-              onQuestionClick={onQuestionClick}
+              onDiscuss={onDiscuss}
+              onMarkAddressed={onMarkAddressed}
               onDismiss={onDismiss}
               isDisabled={isDisabled}
             />
@@ -82,18 +84,27 @@ const ExpertQuestionGroup: React.FC<{
 
 export const TrackedQuestionsSidebar: React.FC = () => {
     const { trackedQuestions, isLoading } = useAgileBloomStore();
-    const { sendMessage, updateQuestionStatusAndPotentiallyGenerateActions } = useAgileBloomChat();
+    const { updateQuestionStatusAndPotentiallyGenerateActions } = useAgileBloomChat();
     const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
     const isProcessing = isLoading || isBulkUpdating;
-
-    const handleQuestionClick = (questionId: string) => {
-        if (isProcessing) return;
-        const shortId = questionId.substring(0, ID_PREFIX_LENGTH_QUESTIONS);
-        sendMessage(`/questions discuss ${shortId}`, null, false);
+    
+    const handleDiscuss = (questionId: string) => {
+      if (isProcessing) return;
+      updateQuestionStatusAndPotentiallyGenerateActions(questionId, QuestionStatus.Addressing);
     };
     
+    const handleMarkAddressed = (questionId: string) => {
+      if (isProcessing) return;
+      updateQuestionStatusAndPotentiallyGenerateActions(questionId, QuestionStatus.Addressed);
+    };
+    
+    const handleDismiss = (questionId: string) => {
+        if (isProcessing) return;
+        updateQuestionStatusAndPotentiallyGenerateActions(questionId, QuestionStatus.Dismissed);
+    };
+
     const handleToggleSelection = (id: string) => {
         setSelectedQuestionIds(prev =>
             prev.includes(id) ? prev.filter(qid => qid !== id) : [...prev, id]
@@ -108,19 +119,16 @@ export const TrackedQuestionsSidebar: React.FC = () => {
         setSelectedQuestionIds(prev => prev.filter(id => !idsToRemove.includes(id)));
     };
 
-    const handleDismiss = (questionId: string) => {
-        if (isProcessing) return;
-        updateQuestionStatusAndPotentiallyGenerateActions(questionId, QuestionStatus.Dismissed);
-    };
-
     const handleBulkStatusChange = async (newStatus: QuestionStatus) => {
         if (isProcessing || selectedQuestionIds.length === 0) return;
         
         setIsBulkUpdating(true);
         try {
-            for (const id of selectedQuestionIds) {
+            // Create a stable list of IDs to process
+            const idsToProcess = [...selectedQuestionIds];
+            for (const id of idsToProcess) {
                 // We run them sequentially to avoid race conditions and potential rate limits,
-                // especially for 'Addressed' which triggers an AI call.
+                // especially for 'Addressed' and 'Addressing' which trigger AI calls.
                 await updateQuestionStatusAndPotentiallyGenerateActions(id, newStatus);
             }
         } catch (error) {
@@ -150,7 +158,8 @@ export const TrackedQuestionsSidebar: React.FC = () => {
                         onToggleSelection={handleToggleSelection}
                         onSelectAll={handleSelectAllForExpert}
                         onDeselectAll={handleDeselectAllForExpert}
-                        onQuestionClick={handleQuestionClick}
+                        onDiscuss={handleDiscuss}
+                        onMarkAddressed={handleMarkAddressed}
                         onDismiss={handleDismiss}
                         isDisabled={isProcessing}
                       />
@@ -185,13 +194,20 @@ export const TrackedQuestionsSidebar: React.FC = () => {
                         </div>
                     )}
                     {!isBulkUpdating && (
-                        <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                           <button 
+                                onClick={() => handleBulkStatusChange(QuestionStatus.Addressing)} 
+                                disabled={isProcessing}
+                                className="flex items-center justify-center gap-1.5 p-2 bg-blue-800/60 hover:bg-blue-700/80 text-blue-300 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <MessageSquare size={14}/> Discuss
+                            </button>
                            <button 
                                 onClick={() => handleBulkStatusChange(QuestionStatus.Addressed)} 
                                 disabled={isProcessing}
                                 className="flex items-center justify-center gap-1.5 p-2 bg-green-800/60 hover:bg-green-700/80 text-green-300 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <CheckSquare size={14}/> Mark as Addressed
+                                <CheckSquare size={14}/> Mark Addressed
                             </button>
                              <button 
                                 onClick={() => handleBulkStatusChange(QuestionStatus.Dismissed)}

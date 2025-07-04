@@ -298,6 +298,15 @@ export const useAgileBloomChat = () => {
     
     updateTrackedQuestionStatus(questionId, newStatus);
 
+    if (newStatus === QuestionStatus.Addressing) {
+      const questionToDiscuss = trackedQuestions.find(q => q.id === questionId);
+      if (questionToDiscuss) {
+        const discussionPrompt = `Let's discuss the following point originally raised by ${questionToDiscuss.expertRole} (${questionToDiscuss.expertEmoji}): "${questionToDiscuss.text}". Team, what are your thoughts or answers regarding this?`;
+        sendMessage(discussionPrompt, null, false);
+      }
+      return;
+    }
+    
     if (newStatus !== QuestionStatus.Addressed) {
         return; 
     }
@@ -701,8 +710,12 @@ Based on the provided conversation history and this resolved question, your task
         processAndAddAiResponse(aiResponse, commandResult.targetExpert);
       } else if (commandResult.action === 'round_robin_ai_response') {
         let allGeneratedTasks: GeminiGeneratedTask[] = [];
+        const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-        for (const expertToEmulate of EXPERT_ROUND_ROBIN_ORDER) {
+        for (const [index, expertToEmulate] of EXPERT_ROUND_ROBIN_ORDER.entries()) {
+          if (index > 0) {
+            await delay(1200); // Add delay to avoid rate limiting.
+          }
           currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion]; 
           
           let finalInstructionForExpert = instructionForAi;
@@ -762,7 +775,11 @@ Based on the provided conversation history and this resolved question, your task
     const initialContextForAi = context || null;
     
     try {
-      for (const expertToEmulate of EXPERT_ROUND_ROBIN_ORDER) {
+      const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+      for (const [index, expertToEmulate] of EXPERT_ROUND_ROBIN_ORDER.entries()) {
+        if (index > 0) {
+          await delay(1200); // Add delay to avoid rate limiting.
+        }
         const { discussion, memoryContext, numThoughts } = useAgileBloomStore.getState();
 
         const aiResponse = await getAiResponse(

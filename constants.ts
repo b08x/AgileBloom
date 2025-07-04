@@ -213,33 +213,37 @@ export const GENERATE_TASKS_FROM_CONTEXT_PROMPT = `
 
 As the Scrum Leader, your task is to perform a comprehensive review of the entire conversation history provided. Your goal is to identify and generate a complete list of actionable tasks required to address the project's goals as discussed.
 
+**Instructions:**
 1.  **Analyze Context:** Read through the entire discussion, paying close attention to problems, proposed solutions, feature requests, and technical requirements.
 2.  **Extract Tasks:** Formulate a list of concrete, actionable tasks. Each task should be a distinct piece of work. For example: "Implement user authentication endpoint", "Design the landing page mockup", "Set up CI/CD pipeline".
 3.  **Assign Experts (Optional):** If a task clearly falls into the domain of a specific expert (Engineer, Artist, Linguist), assign it to them.
-4.  **Format Output:** Your entire response MUST be a single JSON object matching this structure:
-    \`\`\`json
-    {
-        "expert": "Scrum Leader",
-        "emoji": "🤔",
-        "message": "A brief summary of what you've done. e.g., 'I've reviewed the discussion and generated a backlog of 8 tasks.' If no tasks are generated, explain why here.",
-        "tasks": [
-            {"description": "A clear, actionable task", "assignedTo": "Engineer"}
-        ],
-        "stories": [],
-        "thoughts": [],
-        "work": null,
-        "memoryEntry": null
-    }
-    \`\`\`
-    -   The primary output MUST be in the \`tasks\` array field.
-    -   The \`expert\` and \`emoji\` fields MUST be set to the Scrum Leader's.
-    -   If no actionable tasks can be derived, return an empty \`tasks\` array.
+4.  **Format Output:** Your entire response MUST be a single JSON object adhering strictly to the structure below.
+    - The \`message\` field MUST be a string providing a brief summary. It MUST NOT contain any task objects.
+    - The primary output of tasks MUST be in the \`tasks\` array. Each element in the array must be a JSON object with a \`description\` (string) and an optional \`assignedTo\` (string) field.
+    - If no actionable tasks can be derived, return an empty \`tasks\` array and explain this in the \`message\` field.
+
+**JSON Output Structure:**
+\`\`\`json
+{
+    "expert": "Scrum Leader",
+    "emoji": "🤔",
+    "message": "A brief summary of what you've done. e.g., 'I've reviewed the discussion and generated a backlog of 8 tasks.'",
+    "tasks": [
+        {"description": "A clear, actionable task", "assignedTo": "Engineer"}
+    ],
+    "stories": [],
+    "thoughts": [],
+    "work": null,
+    "memoryEntry": null
+}
+\`\`\`
+- The \`expert\` and \`emoji\` fields MUST be set to the Scrum Leader's.
 `;
 
 export const BREAKDOWN_STORY_PROMPT_TEMPLATE = `
 **User Story Breakdown Request**
 
-As an expert ({emulated_expert_name}), your task is to break down the following user story into concrete, actionable tasks from your specific perspective. Other experts will also be providing tasks from their perspectives.
+As an expert ({emulated_expert_name}), your task is to break down the following user story into concrete, actionable tasks from your specific perspective.
 
 **User Story to Analyze:**
 - **Story:** "{user_story_text}"
@@ -250,25 +254,29 @@ As an expert ({emulated_expert_name}), your task is to break down the following 
 **Your Instructions:**
 1.  **Analyze:** From the perspective of a {emulated_expert_name} ({emulated_expert_description}), what specific work needs to be done to fulfill this user story?
 2.  **Generate Tasks:** Create a list of small, actionable tasks that fall under your domain.
-3.  **Format Output:** Your entire response MUST be a single JSON object matching this structure:
-    \`\`\`json
-    {
-        "expert": "{emulated_expert_name}",
-        "emoji": "{expert_emoji_placeholder}",
-        "message": "A brief summary of your contribution. e.g., 'From an engineering standpoint, I've identified 3 tasks related to database setup and API endpoints.' If you have no tasks, explain why here.",
-        "tasks": [
-            {"description": "Your specific, actionable task description", "assignedTo": "{emulated_expert_name}"}
-        ],
-        "stories": [],
-        "thoughts": [],
-        "work": null,
-        "memoryEntry": null
-    }
-    \`\`\`
-    -   The tasks you generate MUST be in the \`tasks\` array.
-    -   You MUST assign each task to yourself by including \`"assignedTo": "{emulated_expert_name}"\` in each task object.
-    -   The \`expert\` field MUST be "{emulated_expert_name}". The \`emoji\` MUST be "{expert_emoji_placeholder}".
-    -   If you have no tasks to contribute, return an empty \`tasks\` array.
+3.  **Format Output:** Your entire response MUST be a single JSON object adhering strictly to the structure below.
+    - The \`message\` field MUST be a string summarizing your contribution. It MUST NOT contain any task objects.
+    - All tasks you generate MUST be in the \`tasks\` array. Each element must be a JSON object with \`description\` and \`assignedTo\` keys.
+    - You MUST assign each task to yourself by setting \`"assignedTo": "{emulated_expert_name}"\`.
+    - If you have no tasks to contribute, return an empty \`tasks\` array and state this in the \`message\` field.
+
+**JSON Output Structure:**
+\`\`\`json
+{
+    "expert": "{emulated_expert_name}",
+    "emoji": "{expert_emoji_placeholder}",
+    "message": "A brief summary of your contribution. e.g., 'From an engineering standpoint, I've identified 3 tasks.'",
+    "tasks": [
+        {"description": "Your specific, actionable task description", "assignedTo": "{emulated_expert_name}"}
+    ],
+    "stories": [],
+    "thoughts": [],
+    "work": null,
+    "memoryEntry": null
+}
+\`\`\`
+- The \`expert\` field MUST be "{emulated_expert_name}".
+- The \`emoji\` field MUST be "{expert_emoji_placeholder}".
 `;
 
 export const GENERATE_NARRATIVE_SUMMARY_PROMPT = `
