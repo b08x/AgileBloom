@@ -1,132 +1,320 @@
-# AgileBloom
+# AgileBloom: AI-Powered Agile Discussion Facilitator
 
-> An AI-powered Agile discussion facilitator that transforms ideas into actionable development plans through collaborative team conversations.
+## COMPUTATIONAL ARCHITECTURE OVERVIEW
 
-## Overview
+```shell
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          AGILEBLOOM SYSTEM                             │
+│                                                                         │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                │
+│  │   LANDING   │───▶│    SETUP    │───▶│    CHAT     │                │
+│  │   STAGE     │    │   STAGE     │    │ INTERFACE   │                │
+│  │             │    │             │    │   STAGE     │                │
+│  └─────────────┘    └─────────────┘    └─────────────┘                │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │                    EXPERT ORCHESTRATION LAYER                      │ │
+│  │ ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  │ │
+│  │ │ENGINEER │  │ ARTIST  │  │LINGUIST │  │ SCRUM   │  │  USER   │  │ │
+│  │ │  👨‍💻     │  │  🧑‍🎨   │  │  🧑‍✒️   │  │LEADER🤔│  │ SYSTEM  │  │ │
+│  │ │PROCESS  │  │PROCESS  │  │PROCESS  │  │PROCESS  │  │PROCESS  │  │ │
+│  │ └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘  │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │                      AI PROVIDER LAYER                             │ │
+│  │ ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐                │ │
+│  │ │ GEMINI  │  │ OPENAI  │  │ MISTRAL │  │OPENROUTER│                │ │
+│  │ │ API     │  │ API     │  │ API     │  │   API    │                │ │
+│  │ └─────────┘  └─────────┘  └─────────┘  └─────────┘                │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │                        STATE LAYER                                 │ │
+│  │ ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  │ │
+│  │ │MESSAGES │  │EXPERTS  │  │QUESTIONS│  │ TASKS   │  │STORIES  │  │ │
+│  │ │  STORE  │  │  STORE  │  │  STORE  │  │  STORE  │  │  STORE  │  │ │
+│  │ └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘  │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-AgileBloom simulates an AI Agile team environment where virtual experts collaborate to analyze projects, generate user stories, and break down work into manageable tasks. The application follows a structured workflow from initial discussion to ready-to-implement tasks, making it ideal for solo developers, small teams, or anyone looking to apply Agile methodologies to their projects.
+## SYSTEM SPECIFICATIONS
 
-## Key Features
+### EXPERT PROCESS DEFINITIONS
 
-### 🎭 AI Expert Team
+**ENGINEER (👨‍💻)**: Technical implementation computational unit
 
-- **Engineer** (👨‍💻): Technical implementation specialist (Python, Bash, Ansible)
-- **Artist** (🧑‍🎨): UI/UX and frontend design expert (CSS, JS, HTML)
-- **Linguist** (🧑‍✒️): Code quality and design pattern advocate (Ruby, linguistics)
-- **Scrum Leader** (🤔): Project management and backlog coordination
+- **PRIMARY FUNCTION**: Transform abstract requirements into executable code specifications
+- **SPECIALIZATION DOMAINS**: Python, Bash, Ansible, system architecture
+- **COMPUTATIONAL ROLE**: Technical feasibility analysis, implementation pathway generation
 
-### 🔄 Workflow Automation
+**ARTIST (🧑‍🎨)**: User experience computational unit  
 
-1. **AI Discussion**: Experts analyze topics and generate insights
-2. **Question Tracking**: System captures interesting discussion points
-3. **Story Generation**: Questions become formal user stories
-4. **Task Breakdown**: Stories are decomposed into actionable tasks
+- **PRIMARY FUNCTION**: Transform functional requirements into user-centered design specifications
+- **SPECIALIZATION DOMAINS**: CSS, JavaScript, HTML, user interface design
+- **COMPUTATIONAL ROLE**: Visual design synthesis, user interaction modeling
 
-### 🧠 Intelligent Features
+**LINGUIST (🧑‍✒️)**: Code quality computational unit
 
-- **Auto Mode**: Continuous discussion with configurable delays
-- **Google Search Integration**: Real-time fact-checking for `/ask` commands
-- **FISH Analysis**: Systematic evaluation of stories and tasks
-- **Memory Context**: Persistent discussion memory across sessions
-- **File Upload Support**: Images and text files for AI analysis
+- **PRIMARY FUNCTION**: Transform implementation specifications into optimal code patterns
+- **SPECIALIZATION DOMAINS**: Ruby, linguistic analysis, design patterns
+- **COMPUTATIONAL ROLE**: Code quality assurance, pattern recognition and optimization
 
-### ⚡ Multi-AI Provider Support
+**SCRUM LEADER (🤔)**: Project management computational unit
 
-- Google Gemini (Flash, Pro, Lite variants)
-- OpenAI GPT models
-- Mistral AI
-- OpenRouter (various models)
+- **PRIMARY FUNCTION**: Transform project requirements into structured workflow specifications
+- **SPECIALIZATION DOMAINS**: Agile methodologies, backlog management, sprint planning
+- **COMPUTATIONAL ROLE**: Project coordination, task prioritization, workflow optimization
 
-## Installation & Setup
+### OPERATIONAL PIPELINE
 
-### Prerequisites
+```shell
+INPUT → DISCUSSION → ANALYSIS → SYNTHESIS → OUTPUT
+  ↓        ↓           ↓          ↓         ↓
+TOPIC → EXPERT      → QUESTION → USER    → TASKS
+       RESPONSES      TRACKING   STORIES
+```
 
-- Node.js 18+
-- npm or yarn
-- AI provider API key (Google Gemini recommended)
+## DETAILED PROCESSING FLOW
 
-### Quick Start
+### Data Flow Architecture
+
+```shell
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          DATA PROCESSING PIPELINE                      │
+│                                                                         │
+│  USER INPUT                                                             │
+│      ↓                                                                  │
+│  ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐          │
+│  │COMMAND  │────▶│COMMAND  │────▶│EXPERT   │────▶│RESPONSE │          │
+│  │PARSER   │     │ROUTER   │     │SELECTOR │     │GENERATOR│          │
+│  └─────────┘     └─────────┘     └─────────┘     └─────────┘          │
+│      ↓                ↓               ↓               ↓                │
+│  ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐          │
+│  │VALIDATION│     │CONTEXT  │     │AI API   │     │CONTENT  │          │
+│  │PROCESS  │     │INJECTION│     │CALL     │     │PROCESSOR│          │
+│  └─────────┘     └─────────┘     └─────────┘     └─────────┘          │
+│      ↓                ↓               ↓               ↓                │
+│  ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐          │
+│  │ERROR    │     │MEMORY   │     │RESPONSE │     │UI       │          │
+│  │HANDLER  │     │STORAGE  │     │PARSER   │     │RENDERER │          │
+│  └─────────┘     └─────────┘     └─────────┘     └─────────┘          │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## COMMAND PROCESSING ARCHITECTURE
+
+### Command Execution Flow
+
+```mermaid
+graph TD
+    A[USER INPUT] --> B{COMMAND PARSER}
+    B -->|/ask| C[SEARCH INTEGRATION]
+    B -->|/suggest| D[EXPERT DISPATCHER]
+    B -->|/insight| E[ANALYSIS ENGINE]
+    B -->|/direction| F[INSTRUCTION PROCESSOR]
+    B -->|/elaborate| G[EXPERT SELECTOR]
+    B -->|/show-work| H[WORK DISPLAY]
+    B -->|/questions| I[QUESTION TRACKER]
+    B -->|/stories| J[STORY GENERATOR]
+    B -->|/backlog| K[BACKLOG MANAGER]
+    B -->|/analyze| L[FISH ANALYZER]
+    
+    C --> M[GOOGLE SEARCH API]
+    D --> N[ROUND-ROBIN EXPERT SELECTION]
+    E --> N
+    F --> N
+    G --> O[TARGETED EXPERT RESPONSE]
+    H --> O
+    I --> P[QUESTION STATE MANAGEMENT]
+    J --> Q[USER STORY SYNTHESIS]
+    K --> R[BACKLOG HEALTH CHECK]
+    L --> S[FISH FRAMEWORK APPLICATION]
+    
+    M --> T[SEARCH RESULTS INTEGRATION]
+    N --> U[AI PROVIDER CALL]
+    O --> U
+    P --> V[UI STATE UPDATE]
+    Q --> W[STORY COLLECTION UPDATE]
+    R --> X[BACKLOG METRICS]
+    S --> Y[ANALYSIS REPORT]
+    
+    T --> Z[CONTEXT INJECTION]
+    U --> Z
+    V --> AA[RENDER CYCLE]
+    W --> AA
+    X --> AA
+    Y --> AA
+    
+    Z --> AA
+    AA --> AB[USER INTERFACE UPDATE]
+```
+
+### State Management Architecture
+
+```mermaid
+graph LR
+    A[ZUSTAND STORE] --> B[DISCUSSION STATE]
+    A --> C[EXPERT STATE]
+    A --> D[QUESTION STATE]
+    A --> E[TASK STATE]
+    A --> F[STORY STATE]
+    A --> G[MEMORY STATE]
+    A --> H[CONFIG STATE]
+    
+    B --> I[MESSAGES ARRAY]
+    B --> J[ACTIVE DISCUSSION]
+    B --> K[AUTO MODE STATUS]
+    
+    C --> L[EXPERT DEFINITIONS]
+    C --> M[EXPERT ROTATION]
+    C --> N[RESPONSE TRACKING]
+    
+    D --> O[TRACKED QUESTIONS]
+    D --> P[QUESTION STATUS]
+    D --> Q[QUESTION METADATA]
+    
+    E --> R[TASK COLLECTION]
+    E --> S[TASK PRIORITIES]
+    E --> T[TASK COMPLETION]
+    
+    F --> U[USER STORIES]
+    F --> V[STORY STATUS]
+    F --> W[STORY BREAKDOWN]
+    
+    G --> X[CONTEXT MEMORY]
+    G --> Y[MEMORY ENTRIES]
+    G --> Z[MEMORY LIMITS]
+    
+    H --> AA[AI PROVIDER CONFIG]
+    H --> AB[MODEL SELECTION]
+    H --> AC[API KEY VALIDATION]
+```
+
+## INSTALLATION & SYSTEM SETUP
+
+### COMPUTATIONAL REQUIREMENTS
+
+- **Node.js Runtime**: Version 18+ (JavaScript V8 engine)
+- **Package Manager**: npm/yarn (dependency resolution)
+- **AI Provider API**: Google Gemini (preferred) | OpenAI | Mistral | OpenRouter
+
+### SYSTEM INITIALIZATION PROTOCOL
 
 ```bash
-# Clone the repository
+# Repository cloning operation
 git clone https://github.com/your-username/agilebloom.git
 cd agilebloom
 
-# Install dependencies
+# Dependency installation process
 npm install
 
-# Create environment file
+# Environment configuration setup
 cp .env.example .env.local
 
-# Add your API key
+# API key injection
 echo "GEMINI_API_KEY=your_api_key_here" >> .env.local
 
-# Start development server
+# Development server initialization
 npm run dev
 ```
 
-### Environment Variables
+### ENVIRONMENT CONFIGURATION MATRIX
 
-Create a `.env.local` file with your API keys:
-
-```env
-GEMINI_API_KEY=your_google_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key_optional
-MISTRAL_API_KEY=your_mistral_api_key_optional
+```
+┌─────────────────────┬────────────────────────────────────────────────────┐
+│ VARIABLE            │ COMPUTATIONAL FUNCTION                            │
+├─────────────────────┼────────────────────────────────────────────────────┤
+│ GEMINI_API_KEY      │ Google Gemini API authentication token           │
+│ OPENAI_API_KEY      │ OpenAI GPT API authentication token              │
+│ MISTRAL_API_KEY     │ Mistral AI API authentication token              │
+│ OPENROUTER_API_KEY  │ OpenRouter API authentication token              │
+└─────────────────────┴────────────────────────────────────────────────────┘
 ```
 
-## Usage Guide
+## OPERATIONAL USAGE PROTOCOL
 
-### Getting Started
+### SYSTEM INITIALIZATION SEQUENCE
 
-1. **Launch**: Run `npm run dev` and open <http://localhost:5173>
-2. **Setup**: Configure your AI provider and model preferences
-3. **Start Discussion**: Enter your project topic and context
-4. **Engage**: Use commands to guide the expert discussion
+1. **LAUNCH PROCESS**: Execute `npm run dev` → Navigate to `http://localhost:5173`
+2. **CONFIGURATION PHASE**: Configure AI provider authentication and model selection
+3. **DISCUSSION INITIALIZATION**: Input project topic and contextual parameters
+4. **EXPERT ENGAGEMENT**: Deploy command-based expert orchestration
 
-### Essential Commands
+### COMMAND EXECUTION MATRIX
 
-```bash
-/ask {question}           # Ask the team a question (uses Google Search)
-/suggest {idea}           # Propose an idea for team feedback  
-/insight {observation}    # Share insights for expert analysis
-/direction {instruction}  # Provide clear direction to the team
-/continue                 # Prompt experts to continue discussion
-
-/elaborate {expert}       # Ask specific expert for more details
-/show-work {expert}       # Request expert to show their current work
-/breakdown {story_id}     # Break user story into actionable tasks
-
-/questions               # Manage tracked discussion points
-/stories                 # Generate user stories from questions
-/backlog                 # Review product backlog health
-/analyze {item_id}       # Perform FISH analysis on story/task
+```
+┌─────────────────────┬────────────────────────────────────────────────────┐
+│ COMMAND             │ COMPUTATIONAL OPERATION                            │
+├─────────────────────┼────────────────────────────────────────────────────┤
+│ /ask {query}        │ Search integration + expert analysis synthesis    │
+│ /suggest {proposal} │ Expert evaluation + feedback generation            │
+│ /insight {data}     │ Expert analysis + insight synthesis               │
+│ /direction {order}  │ Expert coordination + execution planning           │
+│ /continue           │ Expert discussion continuation trigger             │
+│ /elaborate {expert} │ Targeted expert deep-dive analysis                │
+│ /show-work {expert} │ Expert work state display operation               │
+│ /breakdown {id}     │ User story decomposition into task units          │
+│ /questions          │ Question state management interface                │
+│ /stories            │ User story synthesis from question data           │
+│ /backlog            │ Backlog health metrics and analysis               │
+│ /analyze {id}       │ FISH framework systematic analysis                │
+└─────────────────────┴────────────────────────────────────────────────────┘
 ```
 
-### Advanced Features
+### ADVANCED OPERATIONAL MODES
 
-#### Auto Mode
+#### AUTO MODE COMPUTATIONAL PROCESS
 
-Enable automatic discussion continuation:
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        AUTO MODE ARCHITECTURE                          │
+│                                                                         │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐              │
+│  │  AUTO MODE  │────▶│   DELAY     │────▶│   EXPERT    │              │
+│  │  TRIGGER    │     │ PROCESSOR   │     │ ACTIVATION  │              │
+│  └─────────────┘     └─────────────┘     └─────────────┘              │
+│         ↓                    ↓                    ↓                    │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐              │
+│  │ TOGGLE      │     │ CONFIGURABLE│     │ AUTOMATIC   │              │
+│  │ STATUS      │     │ TIMING      │     │ RESPONSE    │              │
+│  │ MONITORING  │     │ (3-30 SEC)  │     │ GENERATION  │              │
+│  └─────────────┘     └─────────────┘     └─────────────┘              │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-- Toggle Auto Mode in the interface
-- Adjust delay between responses (3-30 seconds)
-- Experts automatically respond with `/continue`
+#### FILE UPLOAD PROCESSING SPECIFICATIONS
 
-#### File Uploads
+- **IMAGE FORMATS**: JPG, PNG, GIF, WebP (maximum 5MB binary data)
+- **TEXT FORMATS**: .txt, .md files (contextual data injection)
+- **UPLOAD MECHANISM**: Attachment interface OR drag-and-drop operation
+- **PROCESSING PIPELINE**: File validation → Content extraction → AI analysis integration
 
-- **Images**: JPG, PNG, GIF, WebP (5MB max)
-- **Text**: .txt, .md files for context
-- Upload via attachment button or drag-and-drop
+#### FISH ANALYSIS COMPUTATIONAL FRAMEWORK
 
-#### FISH Analysis
-
-Systematic evaluation framework for stories and tasks:
-
-- **F**unctional: Process analysis
-- **I**nteractional: Dynamics and dependencies  
-- **S**emantic: Certainty and commitment levels
-- **H**ierarchical: Communication and transparency
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          FISH ANALYSIS MATRIX                          │
+│                                                                         │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐              │
+│  │FUNCTIONAL   │     │INTERACTIONAL│     │  SEMANTIC   │              │
+│  │  ANALYSIS   │     │  ANALYSIS   │     │  ANALYSIS   │              │
+│  │             │     │             │     │             │              │
+│  │Process      │     │Dynamics     │     │Certainty    │              │
+│  │Evaluation   │     │Dependencies │     │Commitment   │              │
+│  └─────────────┘     └─────────────┘     └─────────────┘              │
+│         ↓                    ↓                    ↓                    │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐              │
+│  │HIERARCHICAL │     │  SYNTHESIS  │     │  ANALYSIS   │              │
+│  │  ANALYSIS   │     │  PROCESSOR  │     │  REPORT     │              │
+│  │             │     │             │     │ GENERATION  │              │
+│  │Communication│     │Integration  │     │Structured   │              │
+│  │Transparency │     │Framework    │     │Output       │              │
+│  └─────────────┘     └─────────────┘     └─────────────┘              │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Use Cases & Examples
 
