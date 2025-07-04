@@ -1,23 +1,28 @@
 
 
+
+
 import React, { useEffect, useRef } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { MessageBubble } from './MessageBubble';
 import { CommandInput } from './CommandInput';
 import { LoadingSpinner } from './LoadingSpinner';
 import { HelpModal } from './HelpModal';
-import { API_KEY_ERROR_MESSAGE } from '../constants';
-import { Keyboard } from 'lucide-react';
+import { API_KEY_ERROR_MESSAGE, MISTRAL_API_KEY_ERROR_MESSAGE, SUPPORTED_MODELS } from '../constants';
 import { RightSidebarContainer } from './RightSidebarContainer';
+import { NarrativeSummarySidebar } from './NarrativeSummarySidebar';
+import { AiProvider } from '../types';
 
 export const ChatInterface: React.FC = () => {
   const { 
     discussion, 
     isLoading, 
     error, 
-    apiKeyStatus, 
+    apiKeyStatus,
+    mistralApiKeyStatus, 
     isHelpModalOpen, 
-    checkAndSetApiKeyStatus,
+    checkApiKeysStatus,
+    selectedModelId
   } = useAgileBloomStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -28,12 +33,19 @@ export const ChatInterface: React.FC = () => {
   useEffect(scrollToBottom, [discussion]);
   
   useEffect(() => {
-    if (apiKeyStatus === 'unchecked') {
-      checkAndSetApiKeyStatus();
+    if (apiKeyStatus === 'unchecked' || mistralApiKeyStatus === 'unchecked') {
+      checkApiKeysStatus();
     }
-  }, [apiKeyStatus, checkAndSetApiKeyStatus]);
+  }, [apiKeyStatus, mistralApiKeyStatus, checkApiKeysStatus]);
 
-  const showApiKeyError = apiKeyStatus === 'error';
+  const selectedModel = SUPPORTED_MODELS.find(m => m.id === selectedModelId);
+  let apiKeyErrorMessage: string | null = null;
+
+  if (selectedModel?.provider === AiProvider.Gemini && apiKeyStatus === 'error') {
+    apiKeyErrorMessage = API_KEY_ERROR_MESSAGE + " (process.env.API_KEY)";
+  } else if (selectedModel?.provider === AiProvider.Mistral && mistralApiKeyStatus === 'error') {
+    apiKeyErrorMessage = MISTRAL_API_KEY_ERROR_MESSAGE + " (process.env.MISTRAL_API_KEY)";
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -41,33 +53,22 @@ export const ChatInterface: React.FC = () => {
       
       <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 overflow-hidden p-2 sm:p-4 gap-4">
         
-        {/* Input Area (Left Column on Desktop) */}
-        <div 
-          className="order-2 lg:order-1 lg:col-span-3 flex flex-col rounded-lg bg-gray-800/30 backdrop-blur-sm p-3 sm:p-4 mt-2 lg:mt-0"
-        >
-          <div className="hidden lg:flex flex-col items-center justify-start p-3 text-center text-gray-400 border-b border-gray-700/30 mb-4 rounded-t-lg bg-gray-900/10">
-            <Keyboard size={36} className="mb-2 text-purple-400 opacity-80" />
-            <h3 className="text-lg font-semibold text-purple-300">Input & Controls</h3>
-            <p className="text-xs">Enter commands and messages below. Use <code>/help</code> for assistance.</p>
-          </div>
-          <div className="flex-grow flex flex-col justify-end">
-            <CommandInput />
-          </div>
+        {/* Left Sidebar (Narrative Summary) */}
+        <div className="order-1 lg:col-span-3 hidden lg:flex flex-col overflow-hidden">
+          <NarrativeSummarySidebar />
         </div>
 
-        {/* Messages Area (Center Column on Desktop) */}
-        <div 
-          className="order-1 lg:order-2 lg:col-span-6 flex flex-col overflow-hidden min-h-[50vh] lg:min-h-0"
-        >
-           <div 
+        {/* Center Column (Messages + Input) */}
+        <div className="order-2 col-span-12 lg:col-span-6 flex flex-col overflow-hidden min-h-[85vh] lg:min-h-0">
+          <div 
             className="flex-grow overflow-y-auto rounded-lg glassmorphism scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50 p-3 sm:p-4"
           >
-            {showApiKeyError && (
+            {apiKeyErrorMessage && (
               <div className="my-2 p-3 bg-red-800/80 border border-red-700 text-white rounded-md text-sm" role="alert" aria-live="assertive">
-                <strong>Configuration Error:</strong> {API_KEY_ERROR_MESSAGE} The application requires a valid Gemini API Key set as an environment variable (<code>process.env.API_KEY</code>) to function.
+                <strong>Configuration Error:</strong> {apiKeyErrorMessage} The application requires a valid API Key set as an environment variable to function.
               </div>
             )}
-            {error && !showApiKeyError && ( 
+            {error && !apiKeyErrorMessage && ( 
               <div className="my-2 p-3 bg-red-700/70 border border-red-600 text-white rounded-md text-sm" role="alert" aria-live="assertive">
                 <strong>Error:</strong> {error}
               </div>
@@ -82,10 +83,13 @@ export const ChatInterface: React.FC = () => {
             )}
             <div ref={messagesEndRef} />
           </div>
+          <div className="flex-shrink-0 pt-2 sm:pt-4">
+            <CommandInput />
+          </div>
         </div>
 
         {/* Right Sidebar (Questions/Tasks) */}
-        <div className="order-3 lg:col-span-3 flex flex-col overflow-hidden rounded-lg bg-gray-800/30 backdrop-blur-sm mt-2 lg:mt-0">
+        <div className="order-3 lg:col-span-3 hidden lg:flex flex-col overflow-hidden rounded-lg bg-gray-800/30 backdrop-blur-sm">
            <RightSidebarContainer />
         </div>
       </div>

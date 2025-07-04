@@ -1,7 +1,9 @@
 
+
+
 import {create} from 'zustand';
 import { DiscussionMessage, ExpertRole, UploadedFile, TrackedQuestion, QuestionStatus, TrackedTask, TaskStatus, Expert, TrackedStory, StoryStatus, SupportedModel } from '../types';
-import { EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS, SUPPORTED_MODELS } from '../constants';
+import { EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS, SUPPORTED_MODELS, API_KEY_ERROR_MESSAGE, MISTRAL_API_KEY_ERROR_MESSAGE } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AgileBloomState {
@@ -11,6 +13,7 @@ interface AgileBloomState {
   error: string | null;
   numThoughts: number;
   apiKeyStatus: 'ok' | 'error' | 'unchecked';
+  mistralApiKeyStatus: 'ok' | 'error' | 'unchecked';
   isHelpModalOpen: boolean;
   userMessageTimestamps: number[];
   isRateLimited: boolean;
@@ -28,6 +31,9 @@ interface AgileBloomState {
 
   isQuotaExceeded: boolean;
 
+  narrativeSummary: string;
+  isSummaryLoading: boolean;
+
   setTopic: (topic: string) => void;
   addMessage: (message: Omit<DiscussionMessage, 'id' | 'timestamp' | 'expert'> & { expertName: ExpertRole }) => DiscussionMessage;
   addErrorMessage: (text: string) => void;
@@ -35,7 +41,7 @@ interface AgileBloomState {
   setError: (error: string | null) => void;
   setNumThoughts: (num: number) => void;
   clearChat: () => void;
-  checkAndSetApiKeyStatus: () => void;
+  checkApiKeysStatus: () => void;
   toggleHelpModal: () => void;
   addUserMessageTimestamp: (timestamp: number) => void;
   setRateLimitedStatus: (isLimited: boolean) => void;
@@ -67,6 +73,9 @@ interface AgileBloomState {
   setSelectedModelId: (modelId: string) => void;
 
   setQuotaExceeded: (isExceeded: boolean) => void;
+
+  setNarrativeSummary: (summary: string) => void;
+  setSummaryLoading: (loading: boolean) => void;
 }
 
 const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
@@ -76,6 +85,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   error: null,
   numThoughts: DEFAULT_NUM_THOUGHTS,
   apiKeyStatus: 'unchecked',
+  mistralApiKeyStatus: 'unchecked',
   isHelpModalOpen: false,
   userMessageTimestamps: [],
   isRateLimited: false,
@@ -86,8 +96,10 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   trackedStories: [],
   isAutoModeEnabled: false,
   autoModeDelaySeconds: DEFAULT_AUTO_MODE_DELAY_SECONDS,
-  selectedModelId: SUPPORTED_MODELS[0]?.id || 'gemini-2.5-flash-preview-04-17',
+  selectedModelId: SUPPORTED_MODELS[0]?.id || 'gemini-2.5-pro-preview-06-05',
   isQuotaExceeded: false,
+  narrativeSummary: '',
+  isSummaryLoading: false,
 
   setTopic: (topic) => set({ topic, error: null }),
   addMessage: (message) => {
@@ -134,19 +146,31 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
       trackedStories: [],
       isAutoModeEnabled: false,
       autoModeDelaySeconds: DEFAULT_AUTO_MODE_DELAY_SECONDS,
-      // Note: isQuotaExceeded is NOT reset here intentionally.
-      // It's a server-side state that persists until the user refreshes.
+      narrativeSummary: '',
+      isSummaryLoading: false,
+      // Note: isQuotaExceeded and API key statuses are NOT reset here intentionally.
+      // They are system-level states that persist until the user refreshes.
     });
   },
-  checkAndSetApiKeyStatus: () => {
-    const key = process.env.API_KEY;
-    if (typeof key !== 'string' || key === "" || key === "NO_KEY_FOUND") {
+  checkApiKeysStatus: () => {
+    // Check Gemini Key
+    const geminiKey = process.env.API_KEY;
+    if (typeof geminiKey !== 'string' || geminiKey === "" || geminiKey === "NO_KEY_FOUND") {
       if (get().apiKeyStatus !== 'error') { 
-        get().addErrorMessage("Gemini API Key (process.env.API_KEY) is not configured. The application will not function correctly.");
+        get().addErrorMessage(API_KEY_ERROR_MESSAGE);
       }
       set({ apiKeyStatus: 'error' });
     } else {
       set({ apiKeyStatus: 'ok' });
+    }
+    
+    // Check Mistral Key
+    const mistralKey = process.env.MISTRAL_API_KEY;
+     if (typeof mistralKey !== 'string' || mistralKey === "" || mistralKey === "NO_KEY_FOUND") {
+      // Don't add a system message for this one unless a mistral model is selected
+      set({ mistralApiKeyStatus: 'error' });
+    } else {
+      set({ mistralApiKeyStatus: 'ok' });
     }
   },
   toggleHelpModal: () => set((state) => ({ isHelpModalOpen: !state.isHelpModalOpen })),
@@ -260,6 +284,9 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
 
   setQuotaExceeded: (isExceeded) => set({ isQuotaExceeded: isExceeded, isLoading: false }),
 
+  setNarrativeSummary: (summary) => set({ narrativeSummary: summary }),
+  setSummaryLoading: (loading) => set({ isSummaryLoading: loading }),
+
   importChatSession: (importedMessages: DiscussionMessage[]) => {
     get().clearChat(); // Reset current session
 
@@ -287,6 +314,6 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   },
 }));
 
-useAgileBloomStore.getState().checkAndSetApiKeyStatus();
+useAgileBloomStore.getState().checkApiKeysStatus();
 
 export default useAgileBloomStore;

@@ -1,8 +1,10 @@
 
 
+
+
 import { useCallback, useEffect, useRef } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
-import { generateExpertResponse } from '../services/geminiService';
+import { getAiResponse } from '../services/aiService';
 import { ExpertRole, GeminiResponseJson, CommandHandlerResult, UploadedFile, SearchCitation, DiscussionMessage, TrackedQuestion, QuestionStatus, TaskStatus, TrackedTask, GeminiGeneratedTask, GeminiGeneratedStory } from '../types';
 import { 
     EXPERTS, 
@@ -13,6 +15,7 @@ import {
     SUPPORTED_IMAGE_MIME_TYPES,
     ID_PREFIX_LENGTH_QUESTIONS,
     GENERATE_TASKS_FROM_CONTEXT_PROMPT,
+    GENERATE_NARRATIVE_SUMMARY_PROMPT,
 } from '../constants';
 
 
@@ -104,6 +107,8 @@ export const useAgileBloomChat = () => {
     addTrackedStory,
     addTrackedTask,
     toggleAutoMode, // For user interruption of auto mode
+    setNarrativeSummary,
+    setSummaryLoading,
   } = useAgileBloomStore();
 
   const rateLimitTimeoutRef = useRef<number | null>(null);
@@ -247,6 +252,33 @@ export const useAgileBloomChat = () => {
 
   }, [addMessage, addErrorMessage, addMemoryEntry, addTrackedQuestion, addTrackedStory, addTrackedTask]);
 
+  const updateNarrativeSummary = useCallback(async () => {
+    const { discussion, topic, memoryContext, selectedModelId } = useAgileBloomStore.getState();
+  
+    if (discussion.length < 2) return;
+  
+    setSummaryLoading(true);
+    try {
+      const aiResponse = await getAiResponse(
+        topic,
+        GENERATE_NARRATIVE_SUMMARY_PROMPT,
+        discussion,
+        0, // No thoughts needed for a summary
+        memoryContext,
+        selectedModelId,
+        ExpertRole.ScrumLeader
+      );
+      if (aiResponse.message) {
+        setNarrativeSummary(aiResponse.message);
+      }
+    } catch (error) {
+      console.error("Error generating narrative summary:", error);
+      setNarrativeSummary("Error updating summary.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [selectedModelId, setNarrativeSummary, setSummaryLoading]);
+
   const updateQuestionStatusAndPotentiallyGenerateActions = useCallback(async (questionId: string, newStatus: QuestionStatus) => {
     // Get latest state directly
     const { trackedQuestions, discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading, selectedModelId } = useAgileBloomStore.getState();
@@ -284,7 +316,7 @@ Based on the provided conversation history and this resolved question, your task
     -   If, after careful review, NO actions are necessary, you MUST return empty arrays for \`tasks\` and \`stories\` and explain why in the \`message\` field (e.g., "Acknowledged. This point was informational and requires no further action.").
 `;
 
-        const aiResponse = await generateExpertResponse(
+        const aiResponse = await getAiResponse(
             topic,
             generationPrompt,
             discussion,
@@ -303,7 +335,7 @@ Based on the provided conversation history and this resolved question, your task
     } finally {
         setLoading(false);
     }
-  }, [updateTrackedQuestionStatus, processAndAddAiResponse]);
+  }, [updateTrackedQuestionStatus, processAndAddAiResponse, selectedModelId]);
 
   const generateTasksFromContext = useCallback(async () => {
     // Get latest state directly
@@ -316,7 +348,7 @@ Based on the provided conversation history and this resolved question, your task
     
     setLoading(true);
     try {
-        const aiResponse = await generateExpertResponse(
+        const aiResponse = await getAiResponse(
             topic,
             GENERATE_TASKS_FROM_CONTEXT_PROMPT,
             discussion,
@@ -335,7 +367,7 @@ Based on the provided conversation history and this resolved question, your task
     } finally {
         setLoading(false);
     }
-  }, [processAndAddAiResponse]);
+  }, [processAndAddAiResponse, selectedModelId]);
 
 
   const checkAndApplyRateLimit = (): boolean => {
@@ -621,7 +653,7 @@ Based on the provided conversation history and this resolved question, your task
       return;
     }
         
-    const imageFileForGemini = (attachedFile && attachedFile.base64Data && SUPPORTED_IMAGE_MIME_TYPES.includes(attachedFile.mimeType)) 
+    const imageFileForAi = (attachedFile && attachedFile.base64Data && SUPPORTED_IMAGE_MIME_TYPES.includes(attachedFile.mimeType)) 
       ? attachedFile 
       : null;
 
@@ -631,7 +663,7 @@ Based on the provided conversation history and this resolved question, your task
       currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion]; // Get fresh discussion state
 
       if (commandResult.action === 'single_ai_response' && commandResult.targetExpert) {
-        const aiResponse = await generateExpertResponse(
+        const aiResponse = await getAiResponse(
           topic, 
           instructionForAi,
           currentDiscussionForProcessing,
@@ -639,7 +671,7 @@ Based on the provided conversation history and this resolved question, your task
           memoryContext,
           selectedModelId,
           commandResult.targetExpert,
-          isAutoTriggered ? null : imageFileForGemini, // Don't pass image for auto-triggered /continue
+          isAutoTriggered ? null : imageFileForAi, // Don't pass image for auto-triggered /continue
           null, // initialContext
           commandResult.assignedTasksContext
         );
@@ -647,7 +679,7 @@ Based on the provided conversation history and this resolved question, your task
       } else if (commandResult.action === 'round_robin_ai_response') {
         for (const expertToEmulate of EXPERT_ROUND_ROBIN_ORDER) {
           currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion]; 
-          const aiResponse = await generateExpertResponse(
+          const aiResponse = await getAiResponse(
             topic, 
             instructionForAi, 
             currentDiscussionForProcessing,
@@ -655,10 +687,11 @@ Based on the provided conversation history and this resolved question, your task
             memoryContext, 
             selectedModelId,
             expertToEmulate,
-            isAutoTriggered ? null : imageFileForGemini // Don't pass image for auto-triggered /continue
+            isAutoTriggered ? null : imageFileForAi // Don't pass image for auto-triggered /continue
           );
           processAndAddAiResponse(aiResponse, expertToEmulate);
         }
+        await updateNarrativeSummary();
       }
     } catch (error) {
       console.error("Error in sendMessage AI processing:", error);
@@ -671,7 +704,7 @@ Based on the provided conversation history and this resolved question, your task
   }, [ 
       addUserMessageTimestamp, setRateLimitedStatus, toggleAutoMode, addMessage, addErrorMessage, 
       setLoading, toggleHelpModal, storeClearChat, clearUploadedFile, processAndAddAiResponse,
-      updateTrackedQuestionStatus, clearAllTrackedQuestions, clearTrackedQuestionsByStatus, selectedModelId
+      updateTrackedQuestionStatus, clearAllTrackedQuestions, clearTrackedQuestionsByStatus, selectedModelId, updateNarrativeSummary
     ]);
 
   const initiateDiscussion = useCallback(async (topic: string, context: string) => {
@@ -691,7 +724,7 @@ Based on the provided conversation history and this resolved question, your task
       for (const expertToEmulate of EXPERT_ROUND_ROBIN_ORDER) {
         const { discussion, memoryContext, numThoughts, selectedModelId } = useAgileBloomStore.getState();
 
-        const aiResponse = await generateExpertResponse(
+        const aiResponse = await getAiResponse(
           topic, 
           instructionForAi, 
           discussion,
@@ -704,6 +737,7 @@ Based on the provided conversation history and this resolved question, your task
         );
         processAndAddAiResponse(aiResponse, expertToEmulate);
       }
+      await updateNarrativeSummary();
     } catch (error) {
        console.error("Error during initial discussion setup:", error);
        const message = error instanceof Error ? error.message : "An unknown error occurred while initializing the discussion.";
@@ -711,7 +745,7 @@ Based on the provided conversation history and this resolved question, your task
     } finally {
         setLoading(false);
     }
-  }, [storeClearChat, setTopic, addMessage, setLoading, addErrorMessage, processAndAddAiResponse]);
+  }, [storeClearChat, setTopic, addMessage, setLoading, addErrorMessage, processAndAddAiResponse, updateNarrativeSummary]);
 
 
   // Effect for Rate Limiting

@@ -1,6 +1,6 @@
 
 
-import { Expert, ExpertRole, Command, SupportedModel } from './types';
+import { Expert, ExpertRole, Command, SupportedModel, AiProvider } from './types';
 
 export const EXPERTS: Record<ExpertRole, Expert> = {
   [ExpertRole.System]: { name: ExpertRole.System, emoji: "⚙️", description: "System messages and announcements.", bgColor: "bg-gray-700", textColor: "text-gray-300" },
@@ -12,11 +12,13 @@ export const EXPERTS: Record<ExpertRole, Expert> = {
 };
 
 export const SUPPORTED_MODELS: SupportedModel[] = [
-    { id: 'gemini-2.5-pro-preview-06-05', name: 'Gemini 2.5 Pro (Preview)', description: 'The most capable model, ideal for complex reasoning and creative tasks.', supportsSearch: true },
-    { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash (Newer)', description: 'A newer, fast and versatile model suitable for a wide range of applications.', supportsSearch: true },
-    { id: 'gemini-2.5-flash-lite-preview-06-17', name: 'Gemini 2.5 Flash Lite', description: 'A lightweight and extremely fast model, great for rapid responses.', supportsSearch: true },
-    { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash (Legacy)', description: 'The previous default model. A good balance of speed and intelligence for general tasks.', supportsSearch: true },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'A fast and efficient model for general tasks.', supportsSearch: false },
+    { id: 'gemini-2.5-pro-preview-06-05', name: 'Gemini 2.5 Pro (Preview)', provider: AiProvider.Gemini, description: 'The most capable model, ideal for complex reasoning and creative tasks.', supportsSearch: true },
+    { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash (Newer)', provider: AiProvider.Gemini, description: 'A newer, fast and versatile model suitable for a wide range of applications.', supportsSearch: true },
+    { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash (Legacy)', provider: AiProvider.Gemini, description: 'The previous default model. A good balance of speed and intelligence for general tasks.', supportsSearch: true },
+    { id: 'gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: AiProvider.Gemini, description: 'A fast, general-purpose model for a wide range of multimodal tasks.', supportsSearch: false },
+    { id: 'mistral-large-latest', name: 'Mistral Large', provider: AiProvider.Mistral, description: 'Top-tier reasoning capacities, for complex, specialized tasks.', supportsSearch: false },
+    { id: 'mistral-small-latest', name: 'Mistral Small', provider: AiProvider.Mistral, description: 'Fast and cost-effective, ideal for high-throughput, low-latency workloads.', supportsSearch: false },
+    { id: 'open-mixtral-8x7b', name: 'Mixtral 8x7B', provider: AiProvider.Mistral, description: 'A high-quality sparse mixture-of-experts model with open weights.', supportsSearch: false },
 ];
 
 export const AVAILABLE_COMMANDS: Command[] = [
@@ -40,6 +42,7 @@ export const AVAILABLE_COMMANDS: Command[] = [
 
 export const DEFAULT_NUM_THOUGHTS = 3;
 export const API_KEY_ERROR_MESSAGE = "API Key for Gemini not found. Please ensure the process.env.API_KEY environment variable is set.";
+export const MISTRAL_API_KEY_ERROR_MESSAGE = "API Key for Mistral not found. Please ensure the process.env.MISTRAL_API_KEY environment variable is set.";
 
 export const EXPERT_ROUND_ROBIN_ORDER: ExpertRole[] = [
   ExpertRole.ScrumLeader,
@@ -183,7 +186,7 @@ The user may upload files (images like PNG, JPG, or text files like .txt or .md)
 - If the user mentions an uploaded file (e.g., "/dataset" with an attachment icon), your response should consider this file.
 
 Google Search Capability:
-For certain user queries, especially those initiated with "/ask" that seek factual, up-to-date, or real-world information, the system may use Google Search to provide relevant information.
+For certain user queries, especially those initiated with "/ask" that seek factual, up-to-date, or real-world information, the system may use Google Search to provide relevant information. This is only available for select Gemini models.
 If Google Search is used to inform your response:
 - The system will provide you with search results. You should synthesize this information into your answer.
 - Citations for the search results will be displayed to the user along with your message.
@@ -224,7 +227,7 @@ Response Instructions:
    - For stories, use this format in the array: \`{"userStory": "As a user, I want to...", "benefit": "So that I can achieve...", "acceptanceCriteria": ["Criterion 1", "Criterion 2"]}\`
 5. **Memory Contribution**: If your response establishes a key fact, decision, or summary (especially from Scrum Leader), include a concise version in \`memoryEntry\`.
 6. Your entire response MUST be a single, valid JSON object. Do NOT add any text outside this JSON object. Example:
-   \`{"expert": "Engineer", "emoji": "👨‍💻", "message": "Main textual response...", "thoughts": ["Thought 1"], "work": null, "isCommandResponse": true, "memoryEntry": "Key takeaway", "tasks": [], "stories": []}\`
+   '{"expert": "Engineer", "emoji": "👨‍💻", "message": "Main textual response...", "thoughts": ["Thought 1"], "work": null, "isCommandResponse": true, "memoryEntry": "Key takeaway", "tasks": [], "stories": []}'
    - "expert" MUST be your emulated expert role name.
    - "emoji" MUST match your emulated expert's emoji.
    - "message" is your primary textual response. If an image was part of the input, your message should reflect your analysis of it.
@@ -251,4 +254,16 @@ As the Scrum Leader, your task is to perform a comprehensive review of the entir
     -   Format each task like this: \`{"description": "A clear, actionable task", "assignedTo": "Engineer"}\`
     -   Provide a brief summary of what you've done in the main \`message\` field (e.g., "I've reviewed the discussion and generated a backlog of 8 tasks.").
     -   If no actionable tasks can be derived from the context, return an empty \`tasks\` array and explain why in the \`message\` field.
+`;
+
+export const GENERATE_NARRATIVE_SUMMARY_PROMPT = `
+**Narrative Summary Request**
+
+As the Scrum Leader, your task is to provide a running, narrative summary of the entire discussion so far. This summary should be concise, yet descriptive, capturing the key points, decisions, and overall direction of the conversation.
+
+1.  **Review History:** Analyze the full conversation history provided.
+2.  **Synthesize:** Do not just list points. Weave them into a brief narrative. Imagine you are writing minutes for the meeting that someone can read to get up to speed quickly.
+3.  **Be Concise:** Keep the summary to one or two paragraphs.
+4.  **Format Output:** Your entire response MUST be a single JSON object. The summary text MUST be in the \`message\` field. Do not use the \`thoughts\` or \`work\` fields for this task.
+    - Example: \`{"expert": "Scrum Leader", "emoji": "🤔", "message": "The team began by exploring user onboarding, with the Linguist raising concerns about intimidating language. This led to a discussion on balancing visual and linguistic cues, and the Engineer proposed creating a shared style guide to ensure consistency.", "isCommandResponse": true}\`
 `;

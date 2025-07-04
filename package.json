@@ -14,6 +14,7 @@
     "zustand": "^5.0.5",
     "uuid": "^11.1.0",
     "@google/genai": "^1.4.0",
+    "@mistralai/mistralai": "latest",
     "lucide-react": "^0.513.0",
     "luc": "^0.3.1"
   },

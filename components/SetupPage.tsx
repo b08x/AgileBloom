@@ -1,13 +1,27 @@
 
 import React, { useState } from 'react';
-import { BrainCircuit, MessageSquareText, Play, Cpu, SearchCheck, ShieldAlert } from 'lucide-react';
+import { BrainCircuit, MessageSquareText, Play, Cpu, SearchCheck, ShieldAlert, Zap } from 'lucide-react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
-import { SUPPORTED_MODELS } from '../constants';
-import { SupportedModel } from '../types';
+import { SUPPORTED_MODELS, MISTRAL_API_KEY_ERROR_MESSAGE, API_KEY_ERROR_MESSAGE } from '../constants';
+import { SupportedModel, AiProvider } from '../types';
 
 interface SetupPageProps {
   onBegin: (topic: string, context: string, modelId: string) => void;
 }
+
+const ProviderBadge: React.FC<{ provider: AiProvider }> = ({ provider }) => {
+  const isGemini = provider === AiProvider.Gemini;
+  const style = isGemini 
+    ? { bgColor: 'bg-blue-900/50', textColor: 'text-blue-300', icon: '💎' }
+    : { bgColor: 'bg-orange-900/50', textColor: 'text-orange-300', icon: '⚡️' };
+
+  return (
+    <span className={`flex items-center text-xs ${style.textColor} ${style.bgColor} px-2 py-0.5 rounded-full`}>
+      {style.icon}
+      <span className="ml-1.5">{provider}</span>
+    </span>
+  );
+};
 
 export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [topic, setTopic] = useState('');
@@ -17,9 +31,20 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
     selectedModelId,
     setSelectedModelId,
     isQuotaExceeded,
+    apiKeyStatus,
+    mistralApiKeyStatus,
   } = useAgileBloomStore();
 
-  const isButtonDisabled = topic.trim() === '' || isQuotaExceeded;
+  
+  let apiKeyErrorMessage: string | null = null;
+  const selectedModel = SUPPORTED_MODELS.find(m => m.id === selectedModelId);
+  if (selectedModel?.provider === AiProvider.Gemini && apiKeyStatus === 'error') {
+    apiKeyErrorMessage = API_KEY_ERROR_MESSAGE + " (process.env.API_KEY)";
+  } else if (selectedModel?.provider === AiProvider.Mistral && mistralApiKeyStatus === 'error') {
+    apiKeyErrorMessage = MISTRAL_API_KEY_ERROR_MESSAGE + " (process.env.MISTRAL_API_KEY)";
+  }
+
+  const isButtonDisabled = topic.trim() === '' || isQuotaExceeded || !!apiKeyErrorMessage;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +71,16 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
                 <div>
                   <h3 className="text-lg">API Quota Exceeded</h3>
                   <p className="text-sm font-normal text-red-300">All requests are currently halted. Please wait for your quota to reset or check your API key settings.</p>
+                </div>
+            </div>
+        )}
+        
+         {apiKeyErrorMessage && (
+            <div className="flex items-center p-4 mb-6 text-base font-semibold text-red-200 bg-red-800/60 border-2 border-red-700 rounded-lg shadow-lg">
+                <Zap size={28} className="mr-4 flex-shrink-0" />
+                <div>
+                  <h3 className="text-lg">API Key Error</h3>
+                  <p className="text-sm font-normal text-red-300">{apiKeyErrorMessage}</p>
                 </div>
             </div>
         )}
@@ -113,16 +148,19 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
                     disabled={isQuotaExceeded}
                   />
                   <div className="ml-4 flex-grow">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center mb-1">
                       <span className="font-semibold text-gray-100">{model.name}</span>
-                      {model.supportsSearch && (
-                        <span className="flex items-center text-xs text-green-300 bg-green-900/50 px-2 py-0.5 rounded-full">
-                          <SearchCheck size={12} className="mr-1" />
-                          Google Search
-                        </span>
-                      )}
+                       <ProviderBadge provider={model.provider} />
                     </div>
-                    <p className="text-sm text-gray-400 mt-1">{model.description}</p>
+                     <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-400 mt-1 flex-grow pr-2">{model.description}</p>
+                        {model.supportsSearch && (
+                            <span className="flex-shrink-0 flex items-center text-xs text-green-300 bg-green-900/50 px-2 py-0.5 rounded-full">
+                            <SearchCheck size={12} className="mr-1" />
+                            Google Search
+                            </span>
+                        )}
+                    </div>
                   </div>
                 </label>
               ))}

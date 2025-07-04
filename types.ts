@@ -1,4 +1,10 @@
 
+
+export enum AiProvider {
+  Gemini = "Gemini",
+  Mistral = "Mistral",
+}
+
 export enum ExpertRole {
   System = "System",
   User = "User",
@@ -141,6 +147,7 @@ export interface TrackedStory {
 export interface SupportedModel {
   id: string;
   name: string;
+  provider: AiProvider;
   description: string;
   supportsSearch: boolean;
 }
