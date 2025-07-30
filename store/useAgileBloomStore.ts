@@ -4,11 +4,11 @@ import { DiscussionMessage, ExpertRole, UploadedFile, TrackedQuestion, QuestionS
 import { DEFAULT_EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS, ROLE_SYSTEM, ROLE_USER, ROLE_SCRUM_LEADER } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 
-const AGILEBLOOM_CUSTOM_EXPERTS_KEY = 'agilebloom-custom-experts';
+const AGILE_BLOOM_CUSTOM_EXPERTS_KEY = 'agile-bloom-custom-experts';
 
 const getInitialExperts = (): Record<ExpertRole, Expert> => {
   try {
-    const customExpertsRaw = localStorage.getItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY);
+    const customExpertsRaw = localStorage.getItem(AGILE_BLOOM_CUSTOM_EXPERTS_KEY);
     const customExperts = customExpertsRaw ? JSON.parse(customExpertsRaw) : {};
     return { ...DEFAULT_EXPERTS, ...customExperts };
   } catch (error) {
@@ -360,9 +360,9 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
       set((state) => {
           const newExperts = { ...state.experts, [expert.name]: expertWithFlag };
           try {
-              const currentCustom = JSON.parse(localStorage.getItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY) || '{}');
+              const currentCustom = JSON.parse(localStorage.getItem(AGILE_BLOOM_CUSTOM_EXPERTS_KEY) || '{}');
               currentCustom[expert.name] = expertWithFlag;
-              localStorage.setItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY, JSON.stringify(currentCustom));
+              localStorage.setItem(AGILE_BLOOM_CUSTOM_EXPERTS_KEY, JSON.stringify(currentCustom));
           } catch (error) {
               console.error("Failed to save custom expert to localStorage:", error);
           }
@@ -373,9 +373,9 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
       set((state) => {
           const { [expertRole]: _, ...remainingExperts } = state.experts;
           try {
-              const customExperts = JSON.parse(localStorage.getItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY) || '{}');
+              const customExperts = JSON.parse(localStorage.getItem(AGILE_BLOOM_CUSTOM_EXPERTS_KEY) || '{}');
               delete customExperts[expertRole];
-              localStorage.setItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY, JSON.stringify(customExperts));
+              localStorage.setItem(AGILE_BLOOM_CUSTOM_EXPERTS_KEY, JSON.stringify(customExperts));
           } catch (error) {
               console.error("Failed to remove custom expert from localStorage:", error);
           }

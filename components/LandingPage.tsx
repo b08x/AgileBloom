@@ -24,9 +24,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
         
         <header className="text-center mb-12">
           <div className="flex justify-center items-center gap-4 mb-4">
-             <img src="https://picsum.photos/seed/agilebloom/60/60" alt="AgileBloom Logo" className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-[#e2a32d]" />
+             <img src="https://picsum.photos/seed/agile-bloom/60/60" alt="Agile Bloom Logo" className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-[#e2a32d]" />
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-              Agile<span className="text-[#e2a32d]">Bloom</span> AI
+              Agile <span className="text-[#e2a32d]">Bloom</span> AI
             </h1>
           </div>
           <p className="text-lg sm:text-xl md:text-2xl text-[#95aac0] mt-2">

@@ -17,7 +17,7 @@ const FILTERS: Array<{ label: string; value: StoryStatus | 'all' }> = [
 const generateFileName = (extension: 'json' | 'csv') => {
   const now = new Date();
   const dateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  return `agilebloom_stories_${dateString}.${extension}`;
+  return `agile-bloom_stories_${dateString}.${extension}`;
 };
 
 const downloadFile = (content: string, fileName: string, mimeType: string) => {

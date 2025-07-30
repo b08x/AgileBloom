@@ -51,7 +51,7 @@ export const Header: React.FC = () => {
     const now = new Date();
     const dateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const timeString = `${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
-    a.download = `agilebloom_chat_${dateString}_${timeString}.json`;
+    a.download = `agile-bloom_chat_${dateString}_${timeString}.json`;
     
     a.href = url;
     document.body.appendChild(a);
@@ -196,9 +196,9 @@ export const Header: React.FC = () => {
   return (
     <header className="relative z-20 bg-[#333e48]/80 backdrop-blur-md shadow-lg p-3 sm:p-4 text-white flex justify-between items-center border-b border-[#5c6f7e]">
       <div className="flex items-center space-x-2">
-        <img src="https://picsum.photos/seed/agilebloom/40/40" alt="AgileBloom Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-[#e2a32d]" />
+        <img src="https://picsum.photos/seed/agile-bloom/40/40" alt="Agile Bloom Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-[#e2a32d]" />
         <h1 className="text-lg sm:text-2xl font-semibold tracking-tight text-gray-200">
-          Agile<span className="text-[#e2a32d]">Bloom</span> AI
+          Agile <span className="text-[#e2a32d]">Bloom</span> AI
         </h1>
       </div>
       {topic && (

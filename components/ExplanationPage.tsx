@@ -43,7 +43,7 @@ export const ExplanationPage: React.FC<ExplanationPageProps> = ({ onContinue }) 
             From Discussion to Delivery
           </h1>
           <p className="text-lg text-gray-200 mt-3 max-w-3xl mx-auto">
-            AgileBloom is designed to turn free-flowing conversations into structured, actionable outcomes. Understand the core workflow.
+            Agile Bloom is designed to turn free-flowing conversations into structured, actionable outcomes. Understand the core workflow.
           </p>
         </header>
 
