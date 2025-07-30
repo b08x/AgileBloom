@@ -3,8 +3,8 @@ import { GoogleGenAI, GenerateContentResponse, Part } from "@google/genai";
 import { createMistral } from '@ai-sdk/mistral';
 import { generateText } from 'ai';
 import OpenAI from 'openai';
-import { DiscussionMessage, ExpertRole, GeminiResponseJson, UploadedFile, AiProvider } from '../types';
-import { EXPERTS, INITIAL_SYSTEM_PROMPT_TEMPLATE, FISH_STORY_TASK_ANALYSIS_PROMPT, SUPPORTED_IMAGE_MIME_TYPES } from '../constants';
+import { DiscussionMessage, Expert, ExpertRole, GeminiResponseJson, UploadedFile, AiProvider } from '../types';
+import { INITIAL_SYSTEM_PROMPT_TEMPLATE, FISH_STORY_TASK_ANALYSIS_PROMPT, SUPPORTED_IMAGE_MIME_TYPES, ROLE_SCRUM_LEADER } from '../constants';
 import { AVAILABLE_MODELS } from '../constants/providerConfig';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 
@@ -20,16 +20,20 @@ function buildSystemPrompt(
   assignedTasksContext: string | null | undefined,
   currentUserMessageOrCommand: string
 ): string {
+    const { experts, selectedExpertRoles } = useAgileBloomStore.getState();
     let emulationInstructions = "";
     let responsePersonaInstruction = "Determine who should respond based on the flow of an Agile Daily Scrum, the current user input/command, and conversation history.";
     let specificTaskInstructions = "";
+    
+    const activeExperts = selectedExpertRoles.map(role => experts[role]).filter(Boolean);
+    const expertListForPrompt = activeExperts.map(expert => `- ${expert.name} (${expert.emoji}): ${expert.description}`).join('\n');
 
     if (emulateExpertAs) {
-        const expertToEmulate = EXPERTS[emulateExpertAs];
+        const expertToEmulate = experts[emulateExpertAs];
         emulationInstructions = `\nYou are currently emulating: ${expertToEmulate.name} (${expertToEmulate.emoji}). Your response MUST be from this expert's perspective.`;
         responsePersonaInstruction = `You MUST respond as ${expertToEmulate.name}. The "expert" field in your JSON output MUST be "${expertToEmulate.name}".`;
 
-        if (emulateExpertAs === ExpertRole.ScrumLeader) {
+        if (emulateExpertAs === ROLE_SCRUM_LEADER) {
             if (currentUserMessageOrCommand.toLowerCase().includes("perform a fish analysis on the following item")) {
                 specificTaskInstructions = `\nFollow these specific instructions for the FISH Analysis on the item provided by the user: \n${FISH_STORY_TASK_ANALYSIS_PROMPT}`;
             } else if (currentUserMessageOrCommand.toLowerCase().startsWith("/backlog")) {
@@ -63,7 +67,8 @@ function buildSystemPrompt(
         .replace('{{specific_task_instructions}}', specificTaskInstructions)
         .replace('{persistent_memory_context}', formattedMemory)
         .replace('{{additional_context_section}}', additionalContextSection)
-        .replace('{{assigned_tasks_section}}', assignedTasksSection);
+        .replace('{{assigned_tasks_section}}', assignedTasksSection)
+        .replace('{expert_list}', expertListForPrompt);
 }
 
 const MAX_RETRIES = 3;
@@ -257,7 +262,7 @@ export async function getAiResponse(
   assignedTasksContext?: string | null
 ): Promise<GeminiResponseJson> {
   
-    const { aiConfig, isQuotaExceeded } = useAgileBloomStore.getState();
+    const { aiConfig, isQuotaExceeded, experts } = useAgileBloomStore.getState();
 
     if (isQuotaExceeded) {
         throw new Error("All AI requests are currently halted due to an API quota issue.");
@@ -310,7 +315,7 @@ export async function getAiResponse(
         if (!result || typeof result !== 'object') {
             throw new Error("AI response is not a valid object.");
         }
-        if (!result.expert || !EXPERTS[result.expert]) {
+        if (!result.expert || !experts[result.expert]) {
             throw new Error(`AI response is missing or has an invalid 'expert' field. Response: ${JSON.stringify(result)}`);
         }
         if (typeof result.message !== 'string') {

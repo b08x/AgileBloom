@@ -1,19 +1,10 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { useAgileBloomChat } from '../hooks/useAgileBloomChat';
-import { EXPERTS, EXPERT_ROUND_ROBIN_ORDER } from '../constants';
 import { TaskStatus, ExpertRole } from '../types';
 import { TaskItemCard } from './TaskItemCard';
 import { ListChecks, BrainCircuit, ListTodo, ClipboardList } from 'lucide-react';
-
-const TABS: Array<{ label: string; value: ExpertRole | 'Unassigned', emoji: React.ReactNode }> = [
-    ...EXPERT_ROUND_ROBIN_ORDER.map(role => ({
-        label: role,
-        value: role,
-        emoji: EXPERTS[role].emoji
-    })),
-    { label: 'Unassigned', value: 'Unassigned', emoji: <ClipboardList size={16} /> }
-];
 
 export const ExpertTasksSidebar: React.FC = () => {
     const { 
@@ -21,11 +12,22 @@ export const ExpertTasksSidebar: React.FC = () => {
         isLoading, 
         topic,
         removeTrackedTask,
+        selectedExpertRoles,
+        experts,
     } = useAgileBloomStore();
     
     const { generateTasksFromContext, sendMessage, handleTaskStatusUpdate } = useAgileBloomChat();
 
-    const [activeTab, setActiveTab] = useState<ExpertRole | 'Unassigned'>(EXPERT_ROUND_ROBIN_ORDER[0]);
+    const tabs: Array<{ label: string; value: ExpertRole | 'Unassigned', emoji: React.ReactNode }> = useMemo(() => [
+        ...selectedExpertRoles.map(role => ({
+            label: role,
+            value: role,
+            emoji: experts[role]?.emoji || '❓'
+        })),
+        { label: 'Unassigned', value: 'Unassigned', emoji: <ClipboardList size={16} /> }
+    ], [selectedExpertRoles, experts]);
+
+    const [activeTab, setActiveTab] = useState<ExpertRole | 'Unassigned'>(selectedExpertRoles[0] || 'Unassigned');
 
     const handleShowWork = (expert: ExpertRole) => {
         if (isLoading || !expert) return;
@@ -65,7 +67,7 @@ export const ExpertTasksSidebar: React.FC = () => {
             
             <div className="p-2 border-b border-[#5c6f7e]">
                 <div className="grid grid-cols-5 gap-1">
-                    {TABS.map(({ label, value, emoji }) => {
+                    {tabs.map(({ label, value, emoji }) => {
                         const tasksForTab = trackedTasks.filter(t => {
                              const isCurrent = t.status === TaskStatus.ToDo || t.status === TaskStatus.InProgress;
                              if (!isCurrent) return false;
@@ -108,6 +110,8 @@ export const ExpertTasksSidebar: React.FC = () => {
                                 onRemove={removeTrackedTask}
                                 onShowWork={handleShowWork}
                                 isDisabled={isLoading}
+                                selectedExpertRoles={selectedExpertRoles}
+                                experts={experts}
                            />
                         ))}
                     </div>

@@ -1,14 +1,14 @@
+
 import React, { useState, useMemo } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { useAgileBloomChat } from '../hooks/useAgileBloomChat';
 import { QuestionItemCard } from './QuestionItemCard';
 import { QuestionStatus, ExpertRole } from '../types';
-import { EXPERTS, EXPERT_ROUND_ROBIN_ORDER } from '../constants';
 import { Lightbulb, ChevronDown, CheckSquare, XSquare, Loader2, MessageSquare } from 'lucide-react';
 
 // An ExpertGroup component to keep the main component cleaner
 const ExpertQuestionGroup: React.FC<{
-  expertRole: ExpertRole;
+  expert: ReturnType<typeof useAgileBloomStore.getState>['experts'][string];
   questions: ReturnType<typeof useAgileBloomStore.getState>['trackedQuestions'];
   selectedQuestionIds: string[];
   onToggleSelection: (id: string) => void;
@@ -18,10 +18,10 @@ const ExpertQuestionGroup: React.FC<{
   onMarkAddressed: (id: string) => void;
   onDismiss: (id: string) => void;
   isDisabled: boolean;
-}> = ({ expertRole, questions, selectedQuestionIds, onToggleSelection, onSelectAll, onDeselectAll, onDiscuss, onMarkAddressed, onDismiss, isDisabled }) => {
+}> = ({ expert, questions, selectedQuestionIds, onToggleSelection, onSelectAll, onDeselectAll, onDiscuss, onMarkAddressed, onDismiss, isDisabled }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
-  const expertQuestions = useMemo(() => questions.filter(q => q.expertRole === expertRole), [questions, expertRole]);
+  const expertQuestions = useMemo(() => questions.filter(q => q.expertRole === expert.name), [questions, expert.name]);
   const expertQuestionIds = useMemo(() => expertQuestions.map(q => q.id), [expertQuestions]);
   
   const areAllSelected = useMemo(() => expertQuestionIds.length > 0 && expertQuestionIds.every(id => selectedQuestionIds.includes(id)), [expertQuestionIds, selectedQuestionIds]);
@@ -52,10 +52,10 @@ const ExpertQuestionGroup: React.FC<{
                 onClick={(e) => e.stopPropagation()} // Prevent header click from toggling collapse
                 disabled={isDisabled}
                 className="h-4 w-4 rounded bg-[#5c6f7e] border-[#95aac0] text-[#c36e26] focus:ring-[#e2a32d] cursor-pointer disabled:cursor-not-allowed"
-                title={`Select all questions from ${expertRole}`}
+                title={`Select all questions from ${expert.name}`}
             />
-            <span className="text-lg">{EXPERTS[expertRole].emoji}</span>
-            <span className="font-semibold text-gray-200">{expertRole}</span>
+            <span className="text-lg">{expert.emoji}</span>
+            <span className="font-semibold text-gray-200">{expert.name}</span>
             <span className="text-xs font-mono bg-[#5c6f7e] text-[#e2a32d] px-1.5 py-0.5 rounded-full">{expertQuestions.length}</span>
         </div>
         <ChevronDown size={20} className={`text-[#95aac0] transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
@@ -82,7 +82,7 @@ const ExpertQuestionGroup: React.FC<{
 
 
 export const TrackedQuestionsSidebar: React.FC = () => {
-    const { trackedQuestions, isLoading } = useAgileBloomStore();
+    const { trackedQuestions, isLoading, experts, selectedExpertRoles } = useAgileBloomStore();
     const { updateQuestionStatusAndPotentiallyGenerateActions } = useAgileBloomChat();
     const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -147,11 +147,11 @@ export const TrackedQuestionsSidebar: React.FC = () => {
             </header>
 
             <div className="flex-grow overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[#5c6f7e] scrollbar-track-[#212934] space-y-3">
-                {trackedQuestions.length > 0 ? (
-                    EXPERT_ROUND_ROBIN_ORDER.map(expertRole => (
+                {trackedQuestions.length > 0 && selectedExpertRoles.length > 0 ? (
+                    selectedExpertRoles.map(expertRole => (
                       <ExpertQuestionGroup
                         key={expertRole}
-                        expertRole={expertRole}
+                        expert={experts[expertRole]}
                         questions={trackedQuestions}
                         selectedQuestionIds={selectedQuestionIds}
                         onToggleSelection={handleToggleSelection}

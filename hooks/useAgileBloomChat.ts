@@ -4,17 +4,18 @@ import useAgileBloomStore from '../store/useAgileBloomStore';
 import { getAiResponse } from '../services/aiService';
 import { ExpertRole, GeminiResponseJson, CommandHandlerResult, UploadedFile, SearchCitation, DiscussionMessage, TrackedQuestion, QuestionStatus, TaskStatus, TrackedTask, GeminiGeneratedTask, GeminiGeneratedStory, StoryStatus, StoryPriority } from '../types';
 import { 
-    EXPERTS, 
-    EXPERT_ROUND_ROBIN_ORDER, 
+    DEFAULT_EXPERTS, 
     AVAILABLE_COMMANDS,
     RATE_LIMIT_MAX_MESSAGES_PER_WINDOW,
     RATE_LIMIT_WINDOW_SECONDS,
     SUPPORTED_IMAGE_MIME_TYPES,
     ID_PREFIX_LENGTH_QUESTIONS,
-    ID_PREFIX_LENGTH_STORIES,
     GENERATE_TASKS_FROM_CONTEXT_PROMPT,
     GENERATE_NARRATIVE_SUMMARY_PROMPT,
     BREAKDOWN_STORY_PROMPT_TEMPLATE,
+    ROLE_SYSTEM,
+    ROLE_USER,
+    ROLE_SCRUM_LEADER,
 } from '../constants';
 
 
@@ -57,6 +58,8 @@ const parseMarkdownTable = (markdown: string): Array<Record<string, string>> => 
 
 
 export const useAgileBloomChat = () => {
+  const store = useAgileBloomStore.getState;
+
   const {
     topic,
     discussion,
@@ -77,8 +80,6 @@ export const useAgileBloomChat = () => {
     clearUploadedFile,
     addTrackedQuestion,
     updateTrackedQuestionStatus, 
-    clearAllTrackedQuestions,    
-    clearTrackedQuestionsByStatus,
     addTrackedStory,
     updateTrackedStory,
     addTrackedTask,
@@ -86,14 +87,25 @@ export const useAgileBloomChat = () => {
     toggleAutoMode, // For user interruption of auto mode
     setNarrativeSummary,
     setSummaryLoading,
+    setLastActionWasAutoContinue,
   } = useAgileBloomStore();
 
   const rateLimitTimeoutRef = useRef<number | null>(null);
   const autoContinueTimeoutRef = useRef<number | null>(null);
   const lastAutoContinuedMessageIdRef = useRef<string | null>(null);
 
-  const handleTaskStatusUpdate = useCallback((taskId: string, newStatus: TaskStatus) => {
-    updateTrackedTaskStatus(taskId, newStatus);
+  const getRoundRobinOrder = useCallback(() => {
+    const { selectedExpertRoles } = store();
+    // Ensure Scrum Leader is always present and first for predictability in certain flows.
+    const order = selectedExpertRoles.filter(role => role !== ROLE_SCRUM_LEADER);
+    if (selectedExpertRoles.includes(ROLE_SCRUM_LEADER)) {
+        order.unshift(ROLE_SCRUM_LEADER);
+    }
+    return order;
+  }, [store]);
+
+  const handleTaskStatusUpdate = useCallback((taskId: string, newStatus: TaskStatus, assignedTo?: ExpertRole) => {
+    updateTrackedTaskStatus(taskId, newStatus, assignedTo);
     
     // Check if we need to update the parent story's status
     const { trackedTasks, trackedStories } = useAgileBloomStore.getState();
@@ -116,23 +128,24 @@ export const useAgileBloomChat = () => {
   }, [updateTrackedTaskStatus, updateTrackedStory]);
 
   const processAndAddAiResponse = useCallback((aiResponse: GeminiResponseJson, emulatedExpertAs?: ExpertRole, associatedStoryId?: string) => {
+    const { experts } = store();
     if (!aiResponse || !aiResponse.expert) {
         console.error("Received an invalid or incomplete AI response:", aiResponse);
         addErrorMessage("Received a malformed response from the AI. Check the console for details.");
         return;
     }
       
-    let expertNameKey = Object.keys(EXPERTS).find(
+    let expertNameKey = Object.keys(experts).find(
       key => key.toLowerCase() === aiResponse.expert.toString().toLowerCase()
     ) as ExpertRole | undefined;
 
-    if (!expertNameKey || !EXPERTS[expertNameKey]) {
+    if (!expertNameKey || !experts[expertNameKey]) {
       console.error("Invalid expert role from AI:", aiResponse.expert, "- using System as fallback.");
       addErrorMessage(`AI returned an invalid expert role: ${aiResponse.expert}. Displaying as System.`);
-      expertNameKey = ExpertRole.System;
+      expertNameKey = ROLE_SYSTEM;
     }
     
-    if (emulatedExpertAs && expertNameKey !== ExpertRole.System && aiResponse.expert !== emulatedExpertAs) {
+    if (emulatedExpertAs && expertNameKey !== ROLE_SYSTEM && aiResponse.expert !== emulatedExpertAs) {
         console.warn(`AI was asked to emulate ${emulatedExpertAs} but responded as ${aiResponse.expert}. Using AI's choice for attribution: ${aiResponse.expert}`);
     }
 
@@ -146,7 +159,7 @@ export const useAgileBloomChat = () => {
     
     const isCmdResponse = aiResponse.isCommandResponse ?? 
                           (!!emulatedExpertAs || !!aiResponse.work || 
-                           (useAgileBloomStore.getState().discussion.slice(-1)[0]?.expert.name === ExpertRole.User && 
+                           (useAgileBloomStore.getState().discussion.slice(-1)[0]?.expert.name === ROLE_USER && 
                             useAgileBloomStore.getState().discussion.slice(-1)[0]?.text.startsWith('/')));
 
 
@@ -163,7 +176,7 @@ export const useAgileBloomChat = () => {
       addMemoryEntry(aiResponse.memoryEntry.trim());
     }
 
-    if (aiResponse.thoughts && aiResponse.thoughts.length > 0 && addedMessage.expert.name !== ExpertRole.System) {
+    if (aiResponse.thoughts && aiResponse.thoughts.length > 0 && addedMessage.expert.name !== ROLE_SYSTEM) {
       aiResponse.thoughts.forEach(thoughtText => {
         if (thoughtText.includes('?') || thoughtText.length > 20) { 
           addTrackedQuestion({
@@ -177,7 +190,7 @@ export const useAgileBloomChat = () => {
     }
 
     // Process user stories from the 'work' field (for manual /stories command)
-    if (aiResponse.work && expertNameKey === ExpertRole.ScrumLeader && isCmdResponse) {
+    if (aiResponse.work && expertNameKey === ROLE_SCRUM_LEADER && isCmdResponse) {
         const parsedStoriesData = parseMarkdownTable(aiResponse.work);
         const stories: Array<any> = parsedStoriesData.filter(item => {
             const keys = Object.keys(item).map(k => k.toLowerCase());
@@ -202,7 +215,7 @@ export const useAgileBloomChat = () => {
             });
 
             addMessage({
-                expertName: ExpertRole.System,
+                expertName: ROLE_SYSTEM,
                 text: `Generated ${stories.length} user stor${stories.length > 1 ? 'ies' : 'y'}. View and manage them in the 'Stories' tab.`,
                 isCommandResponse: true,
             });
@@ -259,13 +272,13 @@ export const useAgileBloomChat = () => {
         summaryMessage += ". You can review them in the sidebar.";
         
         addMessage({
-            expertName: ExpertRole.System,
+            expertName: ROLE_SYSTEM,
             text: summaryMessage,
             isCommandResponse: true,
         });
     }
 
-  }, [addMessage, addErrorMessage, addMemoryEntry, addTrackedQuestion, addTrackedStory, addTrackedTask]);
+  }, [addMessage, addErrorMessage, addMemoryEntry, addTrackedQuestion, addTrackedStory, addTrackedTask, store]);
 
   const updateNarrativeSummary = useCallback(async () => {
     const { discussion, topic, memoryContext } = useAgileBloomStore.getState();
@@ -280,7 +293,7 @@ export const useAgileBloomChat = () => {
         discussion,
         0, // No thoughts needed for a summary
         memoryContext,
-        ExpertRole.ScrumLeader
+        ROLE_SCRUM_LEADER
       );
       if (aiResponse.message) {
         setNarrativeSummary(aiResponse.message);
@@ -292,110 +305,6 @@ export const useAgileBloomChat = () => {
       setSummaryLoading(false);
     }
   }, [setNarrativeSummary, setSummaryLoading]);
-
-  const updateQuestionStatusAndPotentiallyGenerateActions = useCallback(async (questionId: string, newStatus: QuestionStatus) => {
-    const { trackedQuestions, discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading } = useAgileBloomStore.getState();
-    
-    updateTrackedQuestionStatus(questionId, newStatus);
-
-    if (newStatus === QuestionStatus.Addressing) {
-      const questionToDiscuss = trackedQuestions.find(q => q.id === questionId);
-      if (questionToDiscuss) {
-        const discussionPrompt = `Let's discuss the following point originally raised by ${questionToDiscuss.expertRole} (${questionToDiscuss.expertEmoji}): "${questionToDiscuss.text}". Team, what are your thoughts or answers regarding this?`;
-        sendMessage(discussionPrompt, null, false);
-      }
-      return;
-    }
-    
-    if (newStatus !== QuestionStatus.Addressed) {
-        return; 
-    }
-
-    const question = trackedQuestions.find(q => q.id === questionId);
-    if (!question) {
-        addErrorMessage(`Could not find question with ID ${questionId} to generate stories from.`);
-        return;
-    }
-
-    setLoading(true);
-    addMessage({
-      expertName: ExpertRole.System,
-      text: `Question "${question.text.substring(0, 50)}..." was marked 'Addressed'. Generating user stories...`,
-      isCommandResponse: true,
-    });
-
-    try {
-        const generationPrompt = `**User Story Generation Request**
-
-The following discussion point has now been marked as 'Addressed':
-- **Question:** "${question.text}"
-- **Raised by:** ${question.expertRole}
-
-Based on the provided conversation history and this resolved question, your task is to act as the Scrum Leader. Your goal is to convert the resolution of this question into one or more formal User Stories for the product backlog.
-
-1.  **Analyze:** Review the conversation that led to this question being addressed. What needs, features, or actions were uncovered?
-2.  **Generate User Stories:** Create a list of user stories.
-    -   Follow the format: "As a [persona], I want [action], so that [benefit]."
-    -   Estimate \`sprintPoints\` (e.g., 1, 2, 3, 5, 8) if possible.
-    -   Set a default \`priority\` of "Medium".
-3.  **Format Output:** Your entire response MUST be a single JSON object.
-    -   Populate the \`stories\` array with your generated items.
-    -   Provide a brief summary in the \`message\` field (e.g., "From that discussion, I've created 2 user stories for our backlog.").
-    -   If NO user story is necessary, return an empty \`stories\` array and explain why in the \`message\` field (e.g., "Acknowledged. This point was informational and requires no further action or backlog items.").
-`;
-
-        const aiResponse = await getAiResponse(
-            topic,
-            generationPrompt,
-            discussion,
-            numThoughts,
-            memoryContext,
-            ExpertRole.ScrumLeader
-        );
-
-        processAndAddAiResponse(aiResponse, ExpertRole.ScrumLeader);
-
-    } catch (error) {
-        console.error("Error generating user stories:", error);
-        const message = error instanceof Error ? error.message : "An error occurred while generating user stories.";
-        addErrorMessage(message);
-    } finally {
-        setLoading(false);
-    }
-  }, [updateTrackedQuestionStatus, processAndAddAiResponse]);
-
-  const generateTasksFromContext = useCallback(async () => {
-    // Get latest state directly
-    const { discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading } = useAgileBloomStore.getState();
-
-    if (discussion.length < 2) { // Need more than just system messages
-        addErrorMessage("Not enough discussion context to generate tasks. Please continue the conversation.");
-        return;
-    }
-    
-    setLoading(true);
-    addMessage({ expertName: ExpertRole.System, text: 'Scrum Leader is reviewing the discussion to generate a task backlog...' });
-    try {
-        const aiResponse = await getAiResponse(
-            topic,
-            GENERATE_TASKS_FROM_CONTEXT_PROMPT,
-            discussion,
-            numThoughts,
-            memoryContext,
-            ExpertRole.ScrumLeader // Scrum Leader is best for this
-        );
-
-        processAndAddAiResponse(aiResponse, ExpertRole.ScrumLeader);
-
-    } catch (error) {
-        console.error("Error generating tasks from context:", error);
-        const message = error instanceof Error ? error.message : "An error occurred while generating the task backlog.";
-        addErrorMessage(message);
-    } finally {
-        setLoading(false);
-    }
-  }, [processAndAddAiResponse]);
-
 
   const checkAndApplyRateLimit = (): boolean => {
     const now = Date.now();
@@ -415,10 +324,10 @@ Based on the provided conversation history and this resolved question, your task
   };
   
   const handleCommandInput = (inputText: string): CommandHandlerResult => {
+    const { topic, experts, selectedExpertRoles } = store();
     const trimmedInput = inputText.trim();
     if (!trimmedInput.startsWith('/')) {
-      const currentTopic = useAgileBloomStore.getState().topic;
-      if (!currentTopic) {
+      if (!topic) {
          return { 
           userMessageText: trimmedInput, 
           action: 'error', 
@@ -462,7 +371,7 @@ Based on the provided conversation history and this resolved question, your task
         if (commandName === "/continue" && args.length > 0) {
              return { userMessageText, action: 'error', errorMessage: "/continue command does not take arguments." };
         }
-        if (!useAgileBloomStore.getState().topic) { 
+        if (!topic) { 
             return { userMessageText, action: 'error', errorMessage: "No active discussion. Please refresh the page to start a new one." };
         }
         aiInstructionText = args.join(' ') || userMessageText;
@@ -471,12 +380,15 @@ Based on the provided conversation history and this resolved question, your task
       case "/elaborate":
       case "/show-work": {
         if (args.length === 0) return { userMessageText, action: 'error', errorMessage: `Please specify an expert for ${commandName}.` };
-        if (!useAgileBloomStore.getState().topic) {
+        if (!topic) {
             return { userMessageText, action: 'error', errorMessage: "No active discussion. Please refresh the page to start a new one." };
         }
         const targetExpertName = args[0];
-        const targetExpertRoleKey = Object.keys(EXPERTS).find(key => key.toLowerCase() === targetExpertName.toLowerCase());
-        if (!targetExpertRoleKey) return { userMessageText, action: 'error', errorMessage: `Unknown expert: ${targetExpertName}. Valid experts: Engineer, Artist, Linguist, Scrum Leader.` };
+        const targetExpertRoleKey = Object.keys(experts).find(key => key.toLowerCase() === targetExpertName.toLowerCase());
+        
+        if (!targetExpertRoleKey || !selectedExpertRoles.includes(targetExpertRoleKey)) {
+             return { userMessageText, action: 'error', errorMessage: `Unknown or inactive expert: ${targetExpertName}. Active experts: ${selectedExpertRoles.join(', ')}.` };
+        }
 
         const { trackedTasks } = useAgileBloomStore.getState();
         const expertRole = targetExpertRoleKey as ExpertRole;
@@ -487,7 +399,7 @@ Based on the provided conversation history and this resolved question, your task
             assignedTasksContext = assignedTasks.map(t => `- [${t.status}] ${t.description}`).join('\n');
         }
 
-        return { userMessageText, aiInstructionText, action: 'single_ai_response', targetExpert: EXPERTS[expertRole].name, assignedTasksContext };
+        return { userMessageText, aiInstructionText, action: 'single_ai_response', targetExpert: experts[expertRole].name, assignedTasksContext };
       }
       
       case "/analyze": {
@@ -511,15 +423,15 @@ Based on the provided conversation history and this resolved question, your task
         
         const analysisPrompt = `Please perform a FISH analysis on the following item. The analysis framework is provided in your system instructions. Place the full analysis in the 'work' field of your JSON response, and provide a brief summary in the 'message' field.\n\nItem for Analysis:\n---\n${itemDescriptionForPrompt}\n---`;
 
-        return { userMessageText, aiInstructionText: analysisPrompt, action: 'single_ai_response', targetExpert: ExpertRole.ScrumLeader };
+        return { userMessageText, aiInstructionText: analysisPrompt, action: 'single_ai_response', targetExpert: ROLE_SCRUM_LEADER };
       }
 
       case "/backlog":
       case "/summary":
-        if (!useAgileBloomStore.getState().topic) {
+        if (!topic) {
             return { userMessageText, action: 'error', errorMessage: "No active discussion. Please refresh the page to start a new one." };
         }
-        return { userMessageText, aiInstructionText, action: 'single_ai_response', targetExpert: ExpertRole.ScrumLeader };
+        return { userMessageText, aiInstructionText, action: 'single_ai_response', targetExpert: ROLE_SCRUM_LEADER };
 
       case "/sprint-planning": {
          const { trackedStories } = useAgileBloomStore.getState();
@@ -529,7 +441,7 @@ Based on the provided conversation history and this resolved question, your task
          }
          const planningPrompt = "Please review the following high-priority user stories from the backlog and recommend a selection to form the current sprint. Explain your reasoning.\n\n" +
             readyStories.map(s => `- [${s.priority}] Story #${s.id.substring(0,6)}: ${s.userStory}`).join('\n');
-         return { userMessageText, aiInstructionText: planningPrompt, action: 'single_ai_response', targetExpert: ExpertRole.ScrumLeader };
+         return { userMessageText, aiInstructionText: planningPrompt, action: 'single_ai_response', targetExpert: ROLE_SCRUM_LEADER };
       }
       
       case "/breakdown": {
@@ -602,7 +514,7 @@ Based on the provided conversation history and this resolved question, your task
           userMessageText, 
           aiInstructionText: storiesPrompt, 
           action: 'single_ai_response', 
-          targetExpert: ExpertRole.ScrumLeader 
+          targetExpert: ROLE_SCRUM_LEADER 
         };
 
       case "/help":
@@ -616,7 +528,7 @@ Based on the provided conversation history and this resolved question, your task
   };
 
   const sendMessage = useCallback(async (rawInputText: string, attachedFile: UploadedFile | null, isAutoTriggered: boolean = false) => {
-    const { topic, numThoughts, memoryContext } = useAgileBloomStore.getState();
+    const { topic, numThoughts, memoryContext, experts } = useAgileBloomStore.getState();
     let currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion];
     
     let userSubmittedText = rawInputText.trim();
@@ -624,7 +536,10 @@ Based on the provided conversation history and this resolved question, your task
     if (!isAutoTriggered) {
       if (!userSubmittedText && !attachedFile) return;
       if (checkAndApplyRateLimit()) return; 
-      addUserMessageTimestamp(Date.now()); 
+      addUserMessageTimestamp(Date.now());
+      setLastActionWasAutoContinue(false);
+    } else {
+      setLastActionWasAutoContinue(true);
     }
       
     let aiInstructionTextForProcessing = userSubmittedText;
@@ -644,23 +559,23 @@ Based on the provided conversation history and this resolved question, your task
     if (!isAutoTriggered && commandResult.action !== 'local' && commandResult.action !== 'error' && useAgileBloomStore.getState().isAutoModeEnabled) {
       toggleAutoMode();
       if (autoContinueTimeoutRef.current) clearTimeout(autoContinueTimeoutRef.current);
-      addMessage({expertName: ExpertRole.System, text: "Auto Mode disabled due to user input."});
+      addMessage({expertName: ROLE_SYSTEM, text: "Auto Mode disabled due to user input."});
     }
 
     if (userSubmittedText && !isAutoTriggered && commandResult.action !== 'error') {
-       addMessage({ expertName: ExpertRole.User, text: userSubmittedText });
+       addMessage({ expertName: ROLE_USER, text: userSubmittedText });
     }
     
     if (attachedFile && !isAutoTriggered) {
         addMessage({
-            expertName: ExpertRole.System,
+            expertName: ROLE_SYSTEM,
             text: `User uploaded "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)}KB).`,
         });
     }
 
     if (commandResult.action === 'error' && commandResult.errorMessage) {
-      if(userSubmittedText && !isAutoTriggered && !useAgileBloomStore.getState().discussion.find(d => d.text === userSubmittedText && d.expert.name === ExpertRole.User)) {
-         addMessage({ expertName: ExpertRole.User, text: userSubmittedText });
+      if(userSubmittedText && !isAutoTriggered && !useAgileBloomStore.getState().discussion.find(d => d.text === userSubmittedText && d.expert.name === ROLE_USER)) {
+         addMessage({ expertName: ROLE_USER, text: userSubmittedText });
       }
       addErrorMessage(commandResult.errorMessage);
       setLoading(false); 
@@ -676,9 +591,9 @@ Based on the provided conversation history and this resolved question, your task
       if (commandResult.userMessageText.startsWith("/help")) toggleHelpModal();
       else if (commandResult.userMessageText.startsWith("/clear")) {
         storeClearChat();
-        addMessage({expertName: ExpertRole.System, text: "Chat cleared. Please refresh the page to start a new discussion."});
+        addMessage({expertName: ROLE_SYSTEM, text: "Chat cleared. Please refresh the page to start a new discussion."});
       } else if (commandResult.aiInstructionText) {
-        addMessage({ expertName: ExpertRole.System, text: commandResult.aiInstructionText, isCommandResponse: true });
+        addMessage({ expertName: ROLE_SYSTEM, text: commandResult.aiInstructionText, isCommandResponse: true });
       }
       if (!isAutoTriggered) clearUploadedFile(); 
       setLoading(false); 
@@ -711,8 +626,9 @@ Based on the provided conversation history and this resolved question, your task
       } else if (commandResult.action === 'round_robin_ai_response') {
         let allGeneratedTasks: GeminiGeneratedTask[] = [];
         const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+        const roundRobinOrder = getRoundRobinOrder();
 
-        for (const [index, expertToEmulate] of EXPERT_ROUND_ROBIN_ORDER.entries()) {
+        for (const [index, expertToEmulate] of roundRobinOrder.entries()) {
           if (index > 0) {
             await delay(1200); // Add delay to avoid rate limiting.
           }
@@ -724,11 +640,11 @@ Based on the provided conversation history and this resolved question, your task
              const story = useAgileBloomStore.getState().trackedStories.find(s => s.id === storyToBreakDownId)!;
              finalInstructionForExpert = BREAKDOWN_STORY_PROMPT_TEMPLATE
                 .replace(/{emulated_expert_name}/g, expertToEmulate)
-                .replace(/{emulated_expert_description}/g, EXPERTS[expertToEmulate].description)
+                .replace(/{emulated_expert_description}/g, experts[expertToEmulate].description)
                 .replace(/{user_story_text}/g, story.userStory)
                 .replace(/{user_story_benefit}/g, story.benefit)
                 .replace(/{user_story_ac}/g, story.acceptanceCriteria.map(ac => `- ${ac}`).join('\n'))
-                .replace(/{expert_emoji_placeholder}/g, EXPERTS[expertToEmulate].emoji);
+                .replace(/{expert_emoji_placeholder}/g, experts[expertToEmulate].emoji);
           }
 
           const aiResponse = await getAiResponse(topic, finalInstructionForExpert, currentDiscussionForProcessing, numThoughts, memoryContext, expertToEmulate, isAutoTriggered ? null : imageFileForAi);
@@ -740,7 +656,7 @@ Based on the provided conversation history and this resolved question, your task
         }
         if (storyToBreakDownId && allGeneratedTasks.length > 0) {
            addMessage({
-              expertName: ExpertRole.System,
+              expertName: ROLE_SYSTEM,
               text: `Breakdown complete. ${allGeneratedTasks.length} tasks were created for story #${storyToBreakDownId.substring(0,6)}.`,
               isCommandResponse: true,
            });
@@ -758,14 +674,118 @@ Based on the provided conversation history and this resolved question, your task
   }, [ 
       addUserMessageTimestamp, setRateLimitedStatus, toggleAutoMode, addMessage, addErrorMessage, 
       setLoading, toggleHelpModal, storeClearChat, clearUploadedFile, processAndAddAiResponse,
-      updateTrackedQuestionStatus, clearAllTrackedQuestions, clearTrackedQuestionsByStatus, updateNarrativeSummary
+      updateNarrativeSummary, getRoundRobinOrder, store, setLastActionWasAutoContinue
     ]);
 
-  const initiateDiscussion = useCallback(async (topic: string, context: string) => {
+  const updateQuestionStatusAndPotentiallyGenerateActions = useCallback(async (questionId: string, newStatus: QuestionStatus) => {
+    const { trackedQuestions, discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading } = useAgileBloomStore.getState();
+    
+    updateTrackedQuestionStatus(questionId, newStatus);
+
+    if (newStatus === QuestionStatus.Addressing) {
+      const questionToDiscuss = trackedQuestions.find(q => q.id === questionId);
+      if (questionToDiscuss) {
+        const discussionPrompt = `Let's discuss the following point originally raised by ${questionToDiscuss.expertRole} (${questionToDiscuss.expertEmoji}): "${questionToDiscuss.text}". Team, what are your thoughts or answers regarding this?`;
+        sendMessage(discussionPrompt, null, false);
+      }
+      return;
+    }
+    
+    if (newStatus !== QuestionStatus.Addressed) {
+        return; 
+    }
+
+    const question = trackedQuestions.find(q => q.id === questionId);
+    if (!question) {
+        addErrorMessage(`Could not find question with ID ${questionId} to generate stories from.`);
+        return;
+    }
+
+    setLoading(true);
+    addMessage({
+      expertName: ROLE_SYSTEM,
+      text: `Question "${question.text.substring(0, 50)}..." was marked 'Addressed'. Generating user stories...`,
+      isCommandResponse: true,
+    });
+
+    try {
+        const generationPrompt = `**User Story Generation Request**
+
+The following discussion point has now been marked as 'Addressed':
+- **Question:** "${question.text}"
+- **Raised by:** ${question.expertRole}
+
+Based on the provided conversation history and this resolved question, your task is to act as the Scrum Leader. Your goal is to convert the resolution of this question into one or more formal User Stories for the product backlog.
+
+1.  **Analyze:** Review the conversation that led to this question being addressed. What needs, features, or actions were uncovered?
+2.  **Generate User Stories:** Create a list of user stories.
+    -   Follow the format: "As a [persona], I want [action], so that [benefit]."
+    -   Estimate \`sprintPoints\` (e.g., 1, 2, 3, 5, 8) if possible.
+    -   Set a default \`priority\` of "Medium".
+3.  **Format Output:** Your entire response MUST be a single JSON object.
+    -   Populate the \`stories\` array with your generated items.
+    -   Provide a brief summary in the \`message\` field (e.g., "From that discussion, I've created 2 user stories for our backlog.").
+    -   If NO user story is necessary, return an empty \`stories\` array and explain why in the \`message\` field (e.g., "Acknowledged. This point was informational and requires no further action or backlog items.").
+`;
+
+        const aiResponse = await getAiResponse(
+            topic,
+            generationPrompt,
+            discussion,
+            numThoughts,
+            memoryContext,
+            ROLE_SCRUM_LEADER
+        );
+
+        processAndAddAiResponse(aiResponse, ROLE_SCRUM_LEADER);
+
+    } catch (error) {
+        console.error("Error generating user stories:", error);
+        const message = error instanceof Error ? error.message : "An error occurred while generating user stories.";
+        addErrorMessage(message);
+    } finally {
+        setLoading(false);
+    }
+  }, [updateTrackedQuestionStatus, processAndAddAiResponse, sendMessage]);
+
+  const generateTasksFromContext = useCallback(async () => {
+    // Get latest state directly
+    const { discussion, topic, numThoughts, memoryContext, addErrorMessage, setLoading } = useAgileBloomStore.getState();
+
+    if (discussion.length < 2) { // Need more than just system messages
+        addErrorMessage("Not enough discussion context to generate tasks. Please continue the conversation.");
+        return;
+    }
+    
+    setLoading(true);
+    addMessage({ expertName: ROLE_SYSTEM, text: 'Scrum Leader is reviewing the discussion to generate a task backlog...' });
+    try {
+        const aiResponse = await getAiResponse(
+            topic,
+            GENERATE_TASKS_FROM_CONTEXT_PROMPT,
+            discussion,
+            numThoughts,
+            memoryContext,
+            ROLE_SCRUM_LEADER // Scrum Leader is best for this
+        );
+
+        processAndAddAiResponse(aiResponse, ROLE_SCRUM_LEADER);
+
+    } catch (error) {
+        console.error("Error generating tasks from context:", error);
+        const message = error instanceof Error ? error.message : "An error occurred while generating the task backlog.";
+        addErrorMessage(message);
+    } finally {
+        setLoading(false);
+    }
+  }, [processAndAddAiResponse]);
+
+  const initiateDiscussion = useCallback(async (topic: string, context: string, selectedRoles: ExpertRole[]) => {
     storeClearChat();
     useAgileBloomStore.getState().setTopic(topic);
+    useAgileBloomStore.getState().setSelectedExpertRoles(selectedRoles);
     addMessage({
-      expertName: ExpertRole.System,
+      expertName: ROLE_SYSTEM,
       text: `Discussion started on topic: "${topic}". The AI team will now provide their initial thoughts.`,
       isCommandResponse: true
     });
@@ -776,7 +796,9 @@ Based on the provided conversation history and this resolved question, your task
     
     try {
       const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-      for (const [index, expertToEmulate] of EXPERT_ROUND_ROBIN_ORDER.entries()) {
+      const roundRobinOrder = getRoundRobinOrder();
+
+      for (const [index, expertToEmulate] of roundRobinOrder.entries()) {
         if (index > 0) {
           await delay(1200); // Add delay to avoid rate limiting.
         }
@@ -802,7 +824,7 @@ Based on the provided conversation history and this resolved question, your task
     } finally {
         setLoading(false);
     }
-  }, [storeClearChat, addMessage, setLoading, addErrorMessage, processAndAddAiResponse, updateNarrativeSummary]);
+  }, [storeClearChat, addMessage, setLoading, addErrorMessage, processAndAddAiResponse, updateNarrativeSummary, getRoundRobinOrder]);
 
 
   // Effect for Rate Limiting
@@ -834,7 +856,7 @@ Based on the provided conversation history and this resolved question, your task
       autoContinueTimeoutRef.current = null;
     }
 
-    const { isAutoModeEnabled, isLoading, topic, discussion } = useAgileBloomStore.getState();
+    const { isAutoModeEnabled, isLoading, topic, discussion, lastActionWasAutoContinue } = useAgileBloomStore.getState();
 
     if (!isAutoModeEnabled || isLoading || !topic || discussion.length === 0) {
       return;
@@ -842,10 +864,10 @@ Based on the provided conversation history and this resolved question, your task
 
     const lastMessage = discussion[discussion.length - 1];
     const wasLastMessageAI = lastMessage && 
-                             lastMessage.expert.name !== ExpertRole.User && 
-                             lastMessage.expert.name !== ExpertRole.System;
+                             lastMessage.expert.name !== ROLE_USER && 
+                             lastMessage.expert.name !== ROLE_SYSTEM;
 
-    if (wasLastMessageAI && lastMessage.id !== lastAutoContinuedMessageIdRef.current) {
+    if (wasLastMessageAI && lastMessage.id !== lastAutoContinuedMessageIdRef.current && !lastActionWasAutoContinue) {
       autoContinueTimeoutRef.current = window.setTimeout(() => {
         if (useAgileBloomStore.getState().isAutoModeEnabled && !useAgileBloomStore.getState().isLoading) { // Re-check state before sending
           console.log(`Auto Mode: Triggering /continue after ${autoModeDelaySeconds}s delay.`);

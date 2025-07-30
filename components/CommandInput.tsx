@@ -34,9 +34,7 @@ export const CommandInput: React.FC = () => {
     if (isSubmitDisabled) return;
     
     let messageToSend = inputText;
-    if (uploadedFile && uploadedFile.textContent) {
-        messageToSend = `Content of uploaded file "${uploadedFile.name}":\n\n${uploadedFile.textContent}\n\n---\nUser prompt:\n${inputText}`;
-    }
+    // Note: The file content is no longer prepended here. The hook handles it.
     
     sendMessage(messageToSend, uploadedFile, false); 
     setInputText('');
@@ -104,7 +102,7 @@ export const CommandInput: React.FC = () => {
   }, [uploadedFile, inputText]); 
 
 
-  let placeholderText = "Type message or /command (e.g., /topic My Project)... Upload image, .txt, .md";
+  let placeholderText = "Type message or /command (e.g., /ask)... Upload image, .txt, .md";
   if (isLoading) {
     placeholderText = "AI is thinking...";
   } else if (isQuotaExceeded) {

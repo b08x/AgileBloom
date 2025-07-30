@@ -1,16 +1,18 @@
 
-import React from 'react';
-import { TrackedTask, TaskStatus, ExpertRole } from '../types';
-import { EXPERTS } from '../constants';
+import React, { useMemo } from 'react';
+import { TrackedTask, TaskStatus, ExpertRole, Expert } from '../types';
 import { Circle, Settings2, Check, Trash2, User, Play, Link } from 'lucide-react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
+import { ROLE_SCRUM_LEADER } from '../constants';
 
 interface TaskItemCardProps {
   task: TrackedTask;
-  onUpdateStatus: (taskId: string, status: TaskStatus) => void;
+  onUpdateStatus: (taskId: string, status: TaskStatus, assignedTo?: ExpertRole) => void;
   onRemove: (taskId: string) => void;
   onShowWork: (expert: ExpertRole) => void;
   isDisabled: boolean;
+  selectedExpertRoles: ExpertRole[];
+  experts: Record<ExpertRole, Expert>;
 }
 
 const statusConfig: Record<TaskStatus, { icon: React.ReactNode; color: string; }> = {
@@ -19,14 +21,25 @@ const statusConfig: Record<TaskStatus, { icon: React.ReactNode; color: string; }
   [TaskStatus.Done]: { icon: <Check size={14} />, color: 'text-green-400' },
 };
 
-export const TaskItemCard: React.FC<TaskItemCardProps> = ({ task, onUpdateStatus, onRemove, onShowWork, isDisabled }) => {
+export const TaskItemCard: React.FC<TaskItemCardProps> = ({ task, onUpdateStatus, onRemove, onShowWork, isDisabled, selectedExpertRoles, experts }) => {
     const { id, description, status, assignedTo, storyId } = task;
     const { trackedStories } = useAgileBloomStore.getState();
     
     const config = statusConfig[status] || statusConfig[TaskStatus.ToDo];
-    const expert = assignedTo ? EXPERTS[assignedTo] : null;
+    const expert = assignedTo ? experts[assignedTo] : null;
 
     const parentStory = storyId ? trackedStories.find(s => s.id === storyId) : null;
+
+    const assignableExperts = useMemo(() => {
+        return selectedExpertRoles.filter(role => role !== ROLE_SCRUM_LEADER);
+    }, [selectedExpertRoles]);
+
+    const handleAssign = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const expertRole = e.target.value as ExpertRole;
+        if (expertRole) {
+            onUpdateStatus(id, status, expertRole);
+        }
+    };
 
     return (
         <div className="w-full text-left p-3 bg-[#333e48] rounded-lg border border-[#5c6f7e] transition-all duration-200 space-y-2">
@@ -61,10 +74,21 @@ export const TaskItemCard: React.FC<TaskItemCardProps> = ({ task, onUpdateStatus
                             <span className="ml-1 font-medium text-gray-200">{expert.name}</span>
                         </span>
                     ) : (
-                        <span className="flex items-center text-gray-500" title="Unassigned">
-                           <User size={12} />
-                           <span className="ml-1">Unassigned</span>
-                        </span>
+                         <select
+                            value=""
+                            onChange={handleAssign}
+                            disabled={isDisabled || assignableExperts.length === 0}
+                            className="bg-[#333e48] border border-[#5c6f7e] rounded text-xs py-0.5 px-2 focus:outline-none focus:ring-1 focus:ring-[#e2a32d] transition-colors disabled:cursor-not-allowed disabled:bg-[#333e48]/50 text-gray-200"
+                            aria-label={`Assign task: ${description}`}
+                            title={assignableExperts.length === 0 ? "No experts available to assign" : "Assign task"}
+                        >
+                            <option value="" disabled>Assign to...</option>
+                            {assignableExperts.map(role => (
+                                <option key={role} value={role}>
+                                    {experts[role]?.emoji || '🧑‍💻'} {role}
+                                </option>
+                            ))}
+                        </select>
                     )}
                 </div>
                  

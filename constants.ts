@@ -1,17 +1,32 @@
 
 import { Expert, ExpertRole, Command, AiProvider } from './types';
 
-export const EXPERTS: Record<ExpertRole, Expert> = {
-  [ExpertRole.System]: { name: ExpertRole.System, emoji: "⚙️", description: "System messages and announcements.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
-  [ExpertRole.User]: { name: ExpertRole.User, emoji: "👤", description: "The user facilitating the discussion.", bgColor: "bg-[#c36e26]", textColor: "text-gray-200" },
-  [ExpertRole.Engineer]: { name: ExpertRole.Engineer, emoji: "👨‍💻", description: "A neat and creative programmer with expertise in Bash, Python, and Ansible.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
-  [ExpertRole.Artist]: { name: ExpertRole.Artist, emoji: "🧑‍🎨", description: "A design expert proficient in CSS, JS, and HTML.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
-  [ExpertRole.Linguist]: { name: ExpertRole.Linguist, emoji: "🧑‍✒️", description: "A pragmatic devil's advocate with expertise in linguistics, design patterns and the Ruby language.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
-  [ExpertRole.ScrumLeader]: { name: ExpertRole.ScrumLeader, emoji: "🤔", description: "Manages the product backlog and time-boxing.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+// Define default roles as string constants for type safety and easy reference
+export const ROLE_SYSTEM: ExpertRole = "System";
+export const ROLE_USER: ExpertRole = "User";
+export const ROLE_ENGINEER: ExpertRole = "Engineer";
+export const ROLE_ARTIST: ExpertRole = "Artist";
+export const ROLE_LINGUIST: ExpertRole = "Linguist";
+export const ROLE_SCRUM_LEADER: ExpertRole = "Scrum Leader";
+
+export const DEFAULT_EXPERTS: Record<ExpertRole, Expert> = {
+  [ROLE_SYSTEM]: { name: ROLE_SYSTEM, emoji: "⚙️", description: "System messages and announcements.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+  [ROLE_USER]: { name: ROLE_USER, emoji: "👤", description: "The user facilitating the discussion.", bgColor: "bg-[#c36e26]", textColor: "text-gray-200" },
+  [ROLE_ENGINEER]: { name: ROLE_ENGINEER, emoji: "👨‍💻", description: "A neat and creative programmer with expertise in Bash, Python, and Ansible.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+  [ROLE_ARTIST]: { name: ROLE_ARTIST, emoji: "🧑‍🎨", description: "A design expert proficient in CSS, JS, and HTML.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+  [ROLE_LINGUIST]: { name: ROLE_LINGUIST, emoji: "🧑‍✒️", description: "A pragmatic devil's advocate with expertise in linguistics, design patterns and the Ruby language.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
+  [ROLE_SCRUM_LEADER]: { name: ROLE_SCRUM_LEADER, emoji: "🤔", description: "Manages the product backlog and time-boxing.", bgColor: "bg-[#333e48]", textColor: "text-gray-200" },
 };
 
+export const DEFAULT_EXPERT_ROLE_NAMES: ExpertRole[] = [
+  ROLE_ENGINEER,
+  ROLE_ARTIST,
+  ROLE_LINGUIST,
+  ROLE_SCRUM_LEADER
+];
+
 export const AVAILABLE_COMMANDS: Command[] = [
-  { name: "/elaborate", arguments: "{expert_name}", description: "Ask a specific expert to elaborate. Expert names: Engineer, Artist, Linguist, Scrum Leader.", example: "/elaborate Engineer" },
+  { name: "/elaborate", arguments: "{expert_name}", description: "Ask a specific expert to elaborate. Use one of the currently selected experts.", example: "/elaborate Engineer" },
   { name: "/ask", arguments: "{question_for_the_team}", description: "Ask a question. Experts will respond with their perspectives. May use Google Search for factual/current info.", example: "/ask What are the main risks?" },
   { name: "/suggest", arguments: "{suggestion}", description: "Make a suggestion. Experts will provide feedback.", example: "/suggest Let's focus on user experience first." },
   { name: "/insight", arguments: "{insight_message}", description: "Share an insight. Experts will discuss its implications.", example: "/insight I noticed a pattern in user feedback." },
@@ -33,13 +48,6 @@ export const AVAILABLE_COMMANDS: Command[] = [
 ];
 
 export const DEFAULT_NUM_THOUGHTS = 3;
-
-export const EXPERT_ROUND_ROBIN_ORDER: ExpertRole[] = [
-  ExpertRole.ScrumLeader,
-  ExpertRole.Engineer,
-  ExpertRole.Artist,
-  ExpertRole.Linguist,
-];
 
 export const RATE_LIMIT_MAX_MESSAGES_PER_WINDOW = 5;
 export const RATE_LIMIT_WINDOW_SECONDS = 10;
@@ -150,11 +158,8 @@ The user facilitates this entire process. If the user enables "Auto Mode", the s
 {{specific_task_instructions}}
 {{assigned_tasks_section}}
 
-Experts:
-- Engineer (👨‍💻): Creative programmer (Bash, Python, Ansible).
-- Artist (🧑‍🎨): Design expert (CSS, JS, HTML).
-- Linguist (🧑‍✒️): Pragmatic devil's advocate (linguistics, design patterns, Ruby).
-- Scrum Leader (🤔): Manages backlog and time-boxing. Responsible for summarizing, generating stories and tasks.
+Active Experts in this session:
+{expert_list}
 
 Persistent Context (Key points from earlier in the discussion to remember):
 {persistent_memory_context}

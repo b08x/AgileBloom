@@ -2,8 +2,8 @@
 import React, { useRef } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { Settings, HelpCircle, Trash2, Zap, ZapOff, Download, UploadCloud } from 'lucide-react'; 
-import { MIN_AUTO_MODE_DELAY_SECONDS, MAX_AUTO_MODE_DELAY_SECONDS, EXPERTS } from '../constants';
-import { DiscussionMessage, ExpertRole } from '../types';
+import { MIN_AUTO_MODE_DELAY_SECONDS, MAX_AUTO_MODE_DELAY_SECONDS, DEFAULT_EXPERTS, ROLE_SYSTEM } from '../constants';
+import { DiscussionMessage, ExpertRole, Expert } from '../types';
 
 export const Header: React.FC = () => {
   const { 
@@ -63,12 +63,9 @@ export const Header: React.FC = () => {
   const handleTriggerImport = () => {
     importFileRef.current?.click();
   };
-
-  const isValidExpertRole = (roleName: any): roleName is ExpertRole => {
-    return Object.values(ExpertRole).includes(roleName as ExpertRole);
-  };
   
   const isValidDiscussionMessage = (msg: any, index: number): msg is DiscussionMessage => {
+    const allExperts = {...useAgileBloomStore.getState().experts, ...DEFAULT_EXPERTS};
     if (typeof msg !== 'object' || msg === null) {
       console.error(`Import validation error: Message at index ${index} is not an object or is null. Message:`, msg);
       return false;
@@ -89,9 +86,10 @@ export const Header: React.FC = () => {
       console.error(`Import validation error: Message at index ${index} has invalid 'expert' object (type: ${typeof msg.expert}). Expected object. Message:`, msg);
       return false;
     }
-    if (!isValidExpertRole(msg.expert.name)) {
-      console.error(`Import validation error: Message at index ${index}, expert.name ('${msg.expert.name}') is not a valid ExpertRole. Message:`, msg);
-      return false;
+    // Check if the expert name is a valid string, not necessarily in the current expert list
+    if (typeof msg.expert.name !== 'string') {
+        console.error(`Import validation error: Message at index ${index}, expert.name is not a string. Message:`, msg);
+        return false;
     }
     if (typeof msg.expert.emoji !== 'string') {
       console.error(`Import validation error: Message at index ${index} has invalid 'expert.emoji' (type: ${typeof msg.expert.emoji}). Expected string. Message:`, msg);
@@ -154,6 +152,8 @@ export const Header: React.FC = () => {
         }
         
         const validatedMessages: DiscussionMessage[] = [];
+        const allExperts = useAgileBloomStore.getState().experts;
+
         for (let i = 0; i < parsedData.length; i++) {
           const msg = parsedData[i];
           if (!isValidDiscussionMessage(msg, i)) {
@@ -161,11 +161,15 @@ export const Header: React.FC = () => {
             throw new Error(`Imported file contains an invalid message structure at index ${i}. Check the browser console for specific details on the problematic message object and field.`);
           }
           
-          const expertData = EXPERTS[msg.expert.name as ExpertRole];
-          if (!expertData) {
-             console.error(`Import error: Expert role '${msg.expert.name}' from message at index ${i} (which passed initial validation) was not found in EXPERTS constant. Message:`, msg);
-             throw new Error(`Internal error: Validated expert role '${msg.expert.name}' (message index ${i}) not found in EXPERTS. This might indicate an inconsistency between ExpertRole enum and EXPERTS constant.`);
-          }
+          // Use the expert data from the file, ensuring it conforms to the Expert type.
+          const expertData: Expert = {
+              name: msg.expert.name,
+              emoji: msg.expert.emoji,
+              description: msg.expert.description || allExperts[msg.expert.name as ExpertRole]?.description || 'Imported expert',
+              bgColor: msg.expert.bgColor,
+              textColor: msg.expert.textColor,
+          };
+          
           validatedMessages.push({ ...msg, expert: expertData });
         }
         
@@ -241,7 +245,7 @@ export const Header: React.FC = () => {
         </button>
         <button
           onClick={() => {
-            if(window.confirm("Are you sure you want to clear the chat and current topic? This will also clear tracked questions and disable auto-mode.")) {
+            if(window.confirm("Are you sure you want to clear the chat and reset the session? This will NOT delete your custom-created experts.")) {
               clearChat();
             }
           }}

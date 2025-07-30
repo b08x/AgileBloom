@@ -1,6 +1,4 @@
 
-
-
 export enum AiProvider {
   Google = "Google",
   Mistral = "Mistral",
@@ -30,21 +28,16 @@ export interface AIModelConfig {
 }
 
 
-export enum ExpertRole {
-  System = "System",
-  User = "User",
-  Engineer = "Engineer",
-  Artist = "Artist",
-  Linguist = "Linguist",
-  ScrumLeader = "Scrum Leader",
-}
+// Changed from enum to string to allow for custom roles
+export type ExpertRole = string;
 
 export interface Expert {
   name: ExpertRole;
   emoji: string;
-  description: string;
+  description:string;
   bgColor: string;
   textColor: string;
+  isCustom?: boolean; // Flag to identify user-created experts
 }
 
 export interface SearchCitation {

@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { BrainCircuit, MessageSquareText, Play, Cpu, CheckCircle, XCircle, Loader, ShieldAlert, KeyRound } from 'lucide-react';
+import { BrainCircuit, MessageSquareText, Play, Cpu, CheckCircle, XCircle, Loader, ShieldAlert, KeyRound, Users, PlusCircle, Trash2 } from 'lucide-react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { AVAILABLE_MODELS } from '../constants/providerConfig';
-import { AIModelConfig, AiProvider, AIConfig } from '../types';
+import { AIModelConfig, AiProvider, AIConfig, ExpertRole, Expert } from '../types';
 import { validateApiKey } from '../services/validationService';
 import { SliderInput } from './SliderInput';
+import { DEFAULT_EXPERT_ROLE_NAMES, ROLE_SCRUM_LEADER } from '../constants';
 
 interface SetupPageProps {
-  onBegin: (topic: string, context: string, config: AIConfig) => void;
+  onBegin: (topic: string, context: string, config: AIConfig, selectedRoles: ExpertRole[]) => void;
 }
 
 type ValidationStatus = 'unchecked' | 'pending' | 'valid' | 'invalid';
@@ -33,7 +34,7 @@ const ProviderBadge: React.FC<{ provider: AiProvider }> = ({ provider }) => {
 export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [topic, setTopic] = useState('');
   const [context, setContext] = useState('');
-  const { isQuotaExceeded, setQuotaExceeded } = useAgileBloomStore();
+  const { isQuotaExceeded, setQuotaExceeded, experts, addExpert, removeExpert } = useAgileBloomStore();
 
   const [selectedProvider, setSelectedProvider] = useState<AiProvider>(AiProvider.Google);
   const [availableModelsForProvider, setAvailableModelsForProvider] = useState<AIModelConfig[]>([]);
@@ -42,10 +43,13 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [modelConfigParams, setModelConfigParams] = useState<Record<string, number>>({});
   const [userApiKeys, setUserApiKeys] = useState<Partial<Record<AiProvider, string>>>({});
   const [apiKeyValidation, setApiKeyValidation] = useState<Partial<Record<AiProvider, { status: ValidationStatus; error?: string }>>>({});
+  
+  const [selectedExpertRoles, setSelectedExpertRoles] = useState<ExpertRole[]>([...DEFAULT_EXPERT_ROLE_NAMES]);
+  const [showAddExpertForm, setShowAddExpertForm] = useState(false);
+  const [newExpert, setNewExpert] = useState({ name: '', emoji: '', description: '' });
 
   const [enableGeminiPreprocessing, setEnableGeminiPreprocessing] = useState(false);
 
-  // Effect to update models when provider changes
   useEffect(() => {
     const models = AVAILABLE_MODELS.filter(m => m.provider === selectedProvider);
     setAvailableModelsForProvider(models);
@@ -56,7 +60,6 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
     }
   }, [selectedProvider]);
 
-  // Effect to update params when model changes
   useEffect(() => {
     const model = AVAILABLE_MODELS.find(m => m.id === selectedModelId);
     if (model) {
@@ -86,6 +89,40 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
     }
   };
 
+  const handleExpertSelection = (role: ExpertRole) => {
+    if (role === ROLE_SCRUM_LEADER) return; // Scrum leader cannot be deselected
+    setSelectedExpertRoles(prev => 
+      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    );
+  };
+
+  const handleAddNewExpert = () => {
+    if (newExpert.name.trim() && newExpert.emoji.trim() && newExpert.description.trim()) {
+      if (experts[newExpert.name]) {
+          alert("An expert with this name already exists.");
+          return;
+      }
+      const expertToAdd: Expert = {
+        ...newExpert,
+        bgColor: "bg-[#333e48]",
+        textColor: "text-gray-200",
+        isCustom: true,
+      };
+      addExpert(expertToAdd);
+      setSelectedExpertRoles(prev => [...prev, expertToAdd.name]);
+      setNewExpert({ name: '', emoji: '', description: '' });
+      setShowAddExpertForm(false);
+    }
+  };
+
+  const handleRemoveExpert = (role: ExpertRole) => {
+    if (window.confirm(`Are you sure you want to permanently delete the expert "${role}"?`)) {
+      removeExpert(role);
+      setSelectedExpertRoles(prev => prev.filter(r => r !== role));
+    }
+  };
+
+
   const getIsReadyToStart = (): { ready: boolean; reason: string } => {
     if (topic.trim() === '') return { ready: false, reason: 'Please enter a discussion topic.' };
     if (isQuotaExceeded) return { ready: false, reason: 'An API key has exceeded its quota.' };
@@ -95,6 +132,10 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
       return { ready: false, reason: `Please enter and validate the API key for ${selectedProvider}.` };
     }
     
+    if (selectedExpertRoles.filter(r => r !== ROLE_SCRUM_LEADER).length === 0) {
+        return { ready: false, reason: 'Please select at least one expert besides the Scrum Leader.' };
+    }
+
     if (selectedProvider === AiProvider.OpenRouter && enableGeminiPreprocessing) {
       const geminiKeyStatus = apiKeyValidation[AiProvider.Google]?.status;
       if (geminiKeyStatus !== 'valid') {
@@ -117,7 +158,7 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
       apiKeys: userApiKeys,
       useGeminiPreprocessing: selectedProvider === AiProvider.OpenRouter ? enableGeminiPreprocessing : undefined,
     };
-    onBegin(topic, context, finalConfig);
+    onBegin(topic, context, finalConfig, selectedExpertRoles);
   };
   
   const renderApiKeyInput = (provider: AiProvider) => {
@@ -194,6 +235,55 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
             <textarea id="context" value={context} onChange={(e) => setContext(e.target.value)} placeholder="Provide background information, constraints, goals, user personas, or any other relevant details..." rows={4} className="w-full p-4 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e2a32d] focus:border-[#e2a32d] transition-colors resize-y" />
           </div>
           
+          {/* Expert Selection */}
+          <div className="space-y-4">
+            <label className="flex items-center text-lg font-semibold text-gray-200">
+              <Users className="mr-3 text-[#e2a32d]" size={24} />
+              Assemble Your AI Team
+            </label>
+            <div className="space-y-3 p-4 bg-[#212934]/50 rounded-lg">
+              {Object.values(experts).map(expert => (
+                <div key={expert.name} className="flex items-center justify-between p-3 bg-[#212934] rounded-lg">
+                  <label htmlFor={`expert-${expert.name}`} className="flex items-center cursor-pointer flex-grow">
+                    <input
+                      id={`expert-${expert.name}`}
+                      type="checkbox"
+                      checked={selectedExpertRoles.includes(expert.name)}
+                      onChange={() => handleExpertSelection(expert.name)}
+                      disabled={expert.name === ROLE_SCRUM_LEADER}
+                      className="h-5 w-5 rounded text-[#c36e26] bg-[#5c6f7e] border-[#95aac0] focus:ring-[#e2a32d] disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <span className="ml-4 text-2xl">{expert.emoji}</span>
+                    <div className="ml-3">
+                      <p className="font-semibold text-gray-200">{expert.name}</p>
+                      <p className="text-xs text-[#95aac0]">{expert.description}</p>
+                    </div>
+                  </label>
+                  {expert.isCustom && (
+                    <button type="button" onClick={() => handleRemoveExpert(expert.name)} className="p-2 rounded-full text-red-500 hover:bg-red-500/20">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {showAddExpertForm ? (
+                <div className="p-3 bg-[#333e48] rounded-lg border border-[#e2a32d]/50 space-y-3">
+                   <input type="text" placeholder="New Expert Name" value={newExpert.name} onChange={e => setNewExpert({...newExpert, name: e.target.value})} className="w-full p-2 bg-[#212934] border border-[#5c6f7e] rounded text-sm"/>
+                   <input type="text" placeholder="Emoji (e.g., 🚀)" value={newExpert.emoji} onChange={e => setNewExpert({...newExpert, emoji: e.target.value})} className="w-full p-2 bg-[#212934] border border-[#5c6f7e] rounded text-sm"/>
+                   <textarea placeholder="Description of expertise..." value={newExpert.description} onChange={e => setNewExpert({...newExpert, description: e.target.value})} rows={2} className="w-full p-2 bg-[#212934] border border-[#5c6f7e] rounded text-sm resize-y"/>
+                   <div className="flex gap-2">
+                        <button type="button" onClick={handleAddNewExpert} className="flex-1 p-2 bg-green-600 hover:bg-green-700 rounded text-sm">Save Expert</button>
+                        <button type="button" onClick={() => setShowAddExpertForm(false)} className="flex-1 p-2 bg-[#5c6f7e] hover:bg-[#95aac0] rounded text-sm">Cancel</button>
+                   </div>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setShowAddExpertForm(true)} className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#5c6f7e] rounded-lg text-[#95aac0] hover:border-[#e2a32d] hover:text-[#e2a32d] transition-colors">
+                  <PlusCircle size={18} /> Add New Expert
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Provider and Model Selection */}
           <div className="space-y-4">
              <label className="flex items-center text-lg font-semibold text-gray-200">

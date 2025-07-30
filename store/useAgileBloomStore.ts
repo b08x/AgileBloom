@@ -1,9 +1,21 @@
 
-
 import {create} from 'zustand';
 import { DiscussionMessage, ExpertRole, UploadedFile, TrackedQuestion, QuestionStatus, TrackedTask, TaskStatus, Expert, TrackedStory, StoryStatus, StoryPriority, AIConfig } from '../types';
-import { EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS } from '../constants';
+import { DEFAULT_EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS, ROLE_SYSTEM, ROLE_USER, ROLE_SCRUM_LEADER } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
+
+const AGILEBLOOM_CUSTOM_EXPERTS_KEY = 'agilebloom-custom-experts';
+
+const getInitialExperts = (): Record<ExpertRole, Expert> => {
+  try {
+    const customExpertsRaw = localStorage.getItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY);
+    const customExperts = customExpertsRaw ? JSON.parse(customExpertsRaw) : {};
+    return { ...DEFAULT_EXPERTS, ...customExperts };
+  } catch (error) {
+    console.error("Failed to parse custom experts from localStorage:", error);
+    return DEFAULT_EXPERTS;
+  }
+};
 
 interface AgileBloomState {
   topic: string | null;
@@ -30,6 +42,10 @@ interface AgileBloomState {
 
   narrativeSummary: string;
   isSummaryLoading: boolean;
+  
+  experts: Record<ExpertRole, Expert>;
+  selectedExpertRoles: ExpertRole[];
+  lastActionWasAutoContinue: boolean;
 
   setTopic: (topic: string) => void;
   addMessage: (message: Omit<DiscussionMessage, 'id' | 'timestamp' | 'expert'> & { expertName: ExpertRole }) => DiscussionMessage;
@@ -72,6 +88,11 @@ interface AgileBloomState {
 
   setNarrativeSummary: (summary: string) => void;
   setSummaryLoading: (loading: boolean) => void;
+  
+  addExpert: (expert: Expert) => void;
+  removeExpert: (expertRole: ExpertRole) => void;
+  setSelectedExpertRoles: (roles: ExpertRole[]) => void;
+  setLastActionWasAutoContinue: (wasAuto: boolean) => void;
 }
 
 const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
@@ -94,16 +115,19 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   isQuotaExceeded: false,
   narrativeSummary: '',
   isSummaryLoading: false,
+  experts: getInitialExperts(),
+  selectedExpertRoles: [],
+  lastActionWasAutoContinue: false,
 
   setTopic: (topic) => set({ topic, error: null }),
   addMessage: (message) => {
-    const expert = EXPERTS[message.expertName] || EXPERTS[ExpertRole.System];
+    const expert = get().experts[message.expertName] || get().experts[ROLE_SYSTEM];
     const newId = uuidv4();
     const newTimestamp = Date.now();
     const fullMessage: DiscussionMessage = { ...message, id: newId, timestamp: newTimestamp, expert };
     set((state) => ({
       discussion: [...state.discussion, fullMessage],
-      isLoading: message.expertName !== ExpertRole.System && message.expertName !== ExpertRole.User ? state.isLoading : false, 
+      isLoading: message.expertName !== ROLE_SYSTEM && message.expertName !== ROLE_USER ? state.isLoading : false, 
     }));
     return fullMessage; 
   },
@@ -113,7 +137,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
         ...state.discussion,
         { 
           id: uuidv4(), 
-          expert: EXPERTS[ExpertRole.System], 
+          expert: get().experts[ROLE_SYSTEM], 
           text, 
           timestamp: Date.now(),
           isError: true,
@@ -142,7 +166,9 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
       autoModeDelaySeconds: DEFAULT_AUTO_MODE_DELAY_SECONDS,
       narrativeSummary: '',
       isSummaryLoading: false,
-      // Note: isQuotaExceeded and aiConfig are NOT reset here intentionally.
+      selectedExpertRoles: [],
+      lastActionWasAutoContinue: false,
+      // Note: isQuotaExceeded, aiConfig, and experts are NOT reset here intentionally.
       // They are system-level states that persist until the user refreshes.
     });
   },
@@ -253,7 +279,75 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
 
   toggleAutoMode: () => set((state) => ({ isAutoModeEnabled: !state.isAutoModeEnabled })),
   setAutoModeDelaySeconds: (seconds: number) => set({ autoModeDelaySeconds: seconds }),
-  
+  importChatSession: (importedMessages: DiscussionMessage[]) => {
+    set((state) => {
+      // Find topic from imported messages
+      let newTopic = 'Imported Session';
+      const topicMessage = importedMessages.find(msg => msg.expert.name === ROLE_SYSTEM && msg.text.startsWith('Discussion started on topic:'));
+      if (topicMessage) {
+        const match = topicMessage.text.match(/topic: "([^"]+)"/);
+        if (match && match[1]) {
+          newTopic = match[1];
+        }
+      }
+
+      // Re-hydrate experts that might not be in the default set
+      const allExpertsInImport = importedMessages.reduce((acc, msg) => {
+          if (!acc[msg.expert.name]) {
+              acc[msg.expert.name] = msg.expert;
+          }
+          return acc;
+      }, {} as Record<ExpertRole, Expert>);
+
+      // Re-hydrate selected roles if possible, by looking at AI responses
+      const importedRoles = importedMessages.reduce((acc, msg) => {
+          if (msg.expert.name !== ROLE_USER && msg.expert.name !== ROLE_SYSTEM) {
+              acc.add(msg.expert.name);
+          }
+          return acc;
+      }, new Set<ExpertRole>());
+      
+      // Ensure Scrum Leader is present if any other experts are
+      if (importedRoles.size > 0 && !importedRoles.has(ROLE_SCRUM_LEADER)) {
+          const scrumLeaderExists = Object.values(allExpertsInImport).some(e => e.name === ROLE_SCRUM_LEADER);
+          if (scrumLeaderExists) {
+              importedRoles.add(ROLE_SCRUM_LEADER);
+          }
+      }
+
+      const successMessage: DiscussionMessage = {
+          id: uuidv4(),
+          expert: state.experts[ROLE_SYSTEM] || DEFAULT_EXPERTS[ROLE_SYSTEM],
+          text: `Successfully imported ${importedMessages.length} messages. Topic set to "${newTopic}". All tracked items (questions, tasks, stories) have been cleared.`,
+          isCommandResponse: true,
+          timestamp: Date.now(),
+      };
+
+      return {
+        // Reset state
+        topic: newTopic,
+        error: null,
+        userMessageTimestamps: [],
+        isRateLimited: false,
+        memoryContext: [],
+        uploadedFile: null,
+        trackedQuestions: [], 
+        trackedTasks: [],
+        trackedStories: [],
+        isAutoModeEnabled: false,
+        autoModeDelaySeconds: DEFAULT_AUTO_MODE_DELAY_SECONDS,
+        narrativeSummary: '',
+        isSummaryLoading: false,
+        lastActionWasAutoContinue: false,
+
+        // Set imported data
+        discussion: [...importedMessages, successMessage],
+        // Merge imported experts with existing ones. Custom experts from localStorage will be preserved.
+        experts: { ...state.experts, ...allExpertsInImport },
+        selectedExpertRoles: Array.from(importedRoles),
+      };
+    });
+  },
   setAiConfig: (config) => set({ aiConfig: config }),
 
   setQuotaExceeded: (isExceeded) => set({ isQuotaExceeded: isExceeded, isLoading: false }),
@@ -261,31 +355,35 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   setNarrativeSummary: (summary) => set({ narrativeSummary: summary }),
   setSummaryLoading: (loading) => set({ isSummaryLoading: loading }),
 
-  importChatSession: (importedMessages: DiscussionMessage[]) => {
-    get().clearChat(); // Reset current session
-
-    // Find the last /topic command to restore the topic
-    let lastTopic: string | null = "Imported Session"; // Default topic
-    const firstSystemMessage = importedMessages.find(m => m.expert.name === ExpertRole.System && m.text.includes("Discussion started on topic:"));
-    if (firstSystemMessage) {
-        const match = firstSystemMessage.text.match(/Discussion started on topic: "(.*)"/);
-        if (match && match[1]) {
-            lastTopic = match[1];
-        }
-    }
-    
-    set({ 
-      discussion: [...importedMessages], // Set imported messages
-      topic: lastTopic,
-      // memoryContext, trackedQuestions, trackedTasks are cleared by clearChat.
-      // They are not restored from import for simplicity in this version.
-    });
-
-    get().addMessage({
-        expertName: ExpertRole.System,
-        text: `Chat session imported successfully. Topic restored to: "${lastTopic}". ${importedMessages.length} messages loaded.`,
-    });
+  addExpert: (expert) => {
+      const expertWithFlag = { ...expert, isCustom: true };
+      set((state) => {
+          const newExperts = { ...state.experts, [expert.name]: expertWithFlag };
+          try {
+              const currentCustom = JSON.parse(localStorage.getItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY) || '{}');
+              currentCustom[expert.name] = expertWithFlag;
+              localStorage.setItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY, JSON.stringify(currentCustom));
+          } catch (error) {
+              console.error("Failed to save custom expert to localStorage:", error);
+          }
+          return { experts: newExperts };
+      });
   },
+  removeExpert: (expertRole) => {
+      set((state) => {
+          const { [expertRole]: _, ...remainingExperts } = state.experts;
+          try {
+              const customExperts = JSON.parse(localStorage.getItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY) || '{}');
+              delete customExperts[expertRole];
+              localStorage.setItem(AGILEBLOOM_CUSTOM_EXPERTS_KEY, JSON.stringify(customExperts));
+          } catch (error) {
+              console.error("Failed to remove custom expert from localStorage:", error);
+          }
+          return { experts: remainingExperts };
+      });
+  },
+  setSelectedExpertRoles: (roles) => set({ selectedExpertRoles: roles }),
+  setLastActionWasAutoContinue: (wasAuto) => set({ lastActionWasAutoContinue: wasAuto }),
 }));
 
 export default useAgileBloomStore;

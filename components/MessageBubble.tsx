@@ -3,6 +3,7 @@ import React from 'react';
 import { DiscussionMessage, ExpertRole, SearchCitation } from '../types';
 import { CodeBlock } from './CodeBlock'; 
 import { ExternalLink } from 'lucide-react';
+import { ROLE_SCRUM_LEADER, ROLE_USER } from '../constants';
 
 const CitationLink: React.FC<{ citation: SearchCitation }> = ({ citation }) => (
   <a
@@ -20,7 +21,7 @@ const CitationLink: React.FC<{ citation: SearchCitation }> = ({ citation }) => (
 
 export const MessageBubble: React.FC<{ message: DiscussionMessage }> = React.memo(({ message }) => {
   const { expert, text, thoughts, work, timestamp, isError, isCommandResponse, searchCitations } = message;
-  const isUser = expert.name === ExpertRole.User;
+  const isUser = expert.name === ROLE_USER;
 
   const bubbleClasses = isUser
     ? `${expert.bgColor} ml-auto`
@@ -32,11 +33,11 @@ export const MessageBubble: React.FC<{ message: DiscussionMessage }> = React.mem
 
   const isFishAnalysis = 
     isCommandResponse &&
-    expert.name === ExpertRole.ScrumLeader && 
+    expert.name === ROLE_SCRUM_LEADER && 
     work && 
     (work.toLowerCase().includes("fish analysis") || work.toLowerCase().includes("rationale score"));
 
-  const isScrumLeaderStoryResponse = expert.name === ExpertRole.ScrumLeader && 
+  const isScrumLeaderStoryResponse = expert.name === ROLE_SCRUM_LEADER && 
                                    isCommandResponse && 
                                    work &&
                                    work.toLowerCase().includes("user story") &&

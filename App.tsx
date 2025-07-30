@@ -7,7 +7,7 @@ import { LandingPage } from './components/LandingPage';
 import { SetupPage } from './components/SetupPage';
 import { useAgileBloomChat } from './hooks/useAgileBloomChat';
 import useAgileBloomStore from './store/useAgileBloomStore';
-import { AIConfig } from './types';
+import { AIConfig, ExpertRole } from './types';
 import { ExplanationPage } from './components/ExplanationPage';
 
 const App: React.FC = () => {
@@ -15,9 +15,9 @@ const App: React.FC = () => {
   const { initiateDiscussion } = useAgileBloomChat();
   const { setAiConfig } = useAgileBloomStore();
 
-  const handleSetupComplete = (topic: string, context: string, config: AIConfig) => {
+  const handleSetupComplete = (topic: string, context: string, config: AIConfig, selectedRoles: ExpertRole[]) => {
     setAiConfig(config);
-    initiateDiscussion(topic, context);
+    initiateDiscussion(topic, context, selectedRoles);
     setAppState('chat');
   };
 

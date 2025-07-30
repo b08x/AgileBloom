@@ -1,12 +1,25 @@
-import React from 'react';
+
+import React, { useMemo } from 'react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
-import { AVAILABLE_COMMANDS } from '../constants';
+import { AVAILABLE_COMMANDS, ROLE_SCRUM_LEADER } from '../constants';
 import { X } from 'lucide-react';
 
 export const HelpModal: React.FC = () => {
-  const { toggleHelpModal } = useAgileBloomStore();
+  const { toggleHelpModal, selectedExpertRoles } = useAgileBloomStore();
 
-  const commandsToDisplay = AVAILABLE_COMMANDS;
+  const commandsToDisplay = useMemo(() => {
+    return AVAILABLE_COMMANDS.map(cmd => {
+      if (cmd.name === '/elaborate' || cmd.name === '/show-work') {
+          const expertList = selectedExpertRoles.filter(r => r !== ROLE_SCRUM_LEADER).join(', ') || '[No experts selected]';
+          return {
+              ...cmd,
+              description: `Ask a specific expert to elaborate. Active experts: ${expertList}.`,
+              example: `/elaborate ${selectedExpertRoles.length > 1 ? selectedExpertRoles.filter(r => r !== ROLE_SCRUM_LEADER)[0] || 'Expert' : 'Expert'}`
+          };
+      }
+      return cmd;
+    });
+  }, [selectedExpertRoles]);
 
   return (
     <div 
