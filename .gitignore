@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 *.mkv
 docs/notes/**
+
+.env
+/node_modules/
