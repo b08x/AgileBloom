@@ -8,6 +8,7 @@ import {
     AVAILABLE_COMMANDS,
     RATE_LIMIT_MAX_MESSAGES_PER_WINDOW,
     RATE_LIMIT_WINDOW_SECONDS,
+    SEQUENTIAL_AI_CALL_DELAY_MS,
     SUPPORTED_IMAGE_MIME_TYPES,
     ID_PREFIX_LENGTH_QUESTIONS,
     GENERATE_TASKS_FROM_CONTEXT_PROMPT,
@@ -630,7 +631,7 @@ export const useAgileBloomChat = () => {
 
         for (const [index, expertToEmulate] of roundRobinOrder.entries()) {
           if (index > 0) {
-            await delay(1200); // Add delay to avoid rate limiting.
+            await delay(SEQUENTIAL_AI_CALL_DELAY_MS); // Add delay to avoid rate limiting.
           }
           currentDiscussionForProcessing = [...useAgileBloomStore.getState().discussion]; 
           
@@ -800,7 +801,7 @@ Based on the provided conversation history and this resolved question, your task
 
       for (const [index, expertToEmulate] of roundRobinOrder.entries()) {
         if (index > 0) {
-          await delay(1200); // Add delay to avoid rate limiting.
+          await delay(SEQUENTIAL_AI_CALL_DELAY_MS); // Add delay to avoid rate limiting.
         }
         const { discussion, memoryContext, numThoughts } = useAgileBloomStore.getState();
 

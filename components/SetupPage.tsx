@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
-import { BrainCircuit, MessageSquareText, Play, Cpu, CheckCircle, XCircle, Loader, ShieldAlert, KeyRound, Users, PlusCircle, Trash2 } from 'lucide-react';
+import { BrainCircuit, MessageSquareText, Play, Cpu, CheckCircle, XCircle, Loader, ShieldAlert, KeyRound, Users, PlusCircle, Trash2, Github, Loader2 } from 'lucide-react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { AVAILABLE_MODELS } from '../constants/providerConfig';
 import { AIModelConfig, AiProvider, AIConfig, ExpertRole, Expert } from '../types';
 import { validateApiKey } from '../services/validationService';
+import { fetchGitHubRepoContents } from '../services/gitService';
 import { SliderInput } from './SliderInput';
 import { DEFAULT_EXPERT_ROLE_NAMES, ROLE_SCRUM_LEADER } from '../constants';
 
@@ -49,6 +49,9 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [newExpert, setNewExpert] = useState({ name: '', emoji: '', description: '' });
 
   const [enableGeminiPreprocessing, setEnableGeminiPreprocessing] = useState(false);
+
+  const [gitRepoUrl, setGitRepoUrl] = useState('');
+  const [repoFetchState, setRepoFetchState] = useState<{ status: 'idle' | 'loading' | 'success' | 'error'; message: string; }>({ status: 'idle', message: '' });
 
   useEffect(() => {
     const models = AVAILABLE_MODELS.filter(m => m.provider === selectedProvider);
@@ -122,9 +125,23 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
     }
   };
 
+  const handleFetchRepo = async () => {
+    if (!gitRepoUrl) return;
+    setRepoFetchState({ status: 'loading', message: 'Fetching repository files...' });
+    try {
+      const { content: repoContent, fileCount } = await fetchGitHubRepoContents(gitRepoUrl);
+      setContext(prev => `${prev}\n\n--- Start of GitHub Repo Context ---\n${repoContent}\n--- End of GitHub Repo Context ---\n`.trim());
+      setRepoFetchState({ status: 'success', message: `Successfully added content from ${fileCount} files.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+      setRepoFetchState({ status: 'error', message });
+      console.error(error);
+    }
+  };
 
   const getIsReadyToStart = (): { ready: boolean; reason: string } => {
     if (topic.trim() === '') return { ready: false, reason: 'Please enter a discussion topic.' };
+    if (repoFetchState.status === 'loading') return { ready: false, reason: 'Please wait for repository import to finish.' };
     if (isQuotaExceeded) return { ready: false, reason: 'An API key has exceeded its quota.' };
 
     const mainKeyStatus = apiKeyValidation[selectedProvider]?.status;
@@ -234,6 +251,42 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
             </label>
             <textarea id="context" value={context} onChange={(e) => setContext(e.target.value)} placeholder="Provide background information, constraints, goals, user personas, or any other relevant details..." rows={4} className="w-full p-4 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e2a32d] focus:border-[#e2a32d] transition-colors resize-y" />
           </div>
+
+          <div>
+              <label htmlFor="github-repo" className="flex items-center text-lg font-semibold text-gray-200 mb-2">
+                <Github className="mr-3 text-[#e2a32d]" size={24} />
+                Import Code from GitHub Repo (Public)
+              </label>
+              <div className="flex items-center gap-2">
+                <input 
+                  id="github-repo" 
+                  type="url" 
+                  value={gitRepoUrl} 
+                  onChange={(e) => setGitRepoUrl(e.target.value)} 
+                  placeholder="e.g., https://github.com/facebook/react" 
+                  className="w-full p-4 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e2a32d] transition-colors" 
+                  aria-label="GitHub Repository URL"
+                />
+                <button 
+                  type="button" 
+                  onClick={handleFetchRepo} 
+                  disabled={!gitRepoUrl || repoFetchState.status === 'loading'}
+                  className="px-4 py-2.5 h-[60px] bg-[#5c6f7e] rounded-lg hover:bg-[#95aac0] disabled:bg-[#5c6f7e]/50 disabled:cursor-not-allowed flex items-center justify-center w-32 shrink-0"
+                >
+                  {repoFetchState.status === 'loading' ? <Loader2 size={24} className="animate-spin" /> : "Fetch Code"}
+                </button>
+              </div>
+              {repoFetchState.status !== 'idle' && (
+                <div className={`mt-2 p-2 rounded-md text-sm flex items-center gap-2 ${
+                    repoFetchState.status === 'success' ? 'bg-green-600/30 text-green-300' : 
+                    repoFetchState.status === 'error' ? 'bg-red-600/30 text-red-300' : ''
+                }`}>
+                  {repoFetchState.status === 'success' && <CheckCircle size={16} />}
+                  {repoFetchState.status === 'error' && <XCircle size={16} />}
+                  <span>{repoFetchState.message}</span>
+                </div>
+              )}
+          </div>
           
           {/* Expert Selection */}
           <div className="space-y-4">
@@ -242,7 +295,7 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
               Assemble Your AI Team
             </label>
             <div className="space-y-3 p-4 bg-[#212934]/50 rounded-lg">
-              {Object.values(experts).map(expert => (
+              {Object.values(experts).map((expert: Expert) => (
                 <div key={expert.name} className="flex items-center justify-between p-3 bg-[#212934] rounded-lg">
                   <label htmlFor={`expert-${expert.name}`} className="flex items-center cursor-pointer flex-grow">
                     <input
@@ -345,6 +398,7 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
               Begin Discussion
               <Play className="ml-3 h-6 w-6 transition-transform duration-300 group-hover:translate-x-1" />
             </button>
+            {!isReady && <p className="text-xs text-yellow-300 mt-3">{disabledReason}</p>}
           </div>
         </form>
       </div>

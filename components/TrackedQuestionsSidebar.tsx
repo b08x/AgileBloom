@@ -5,6 +5,7 @@ import { useAgileBloomChat } from '../hooks/useAgileBloomChat';
 import { QuestionItemCard } from './QuestionItemCard';
 import { QuestionStatus, ExpertRole } from '../types';
 import { Lightbulb, ChevronDown, CheckSquare, XSquare, Loader2, MessageSquare } from 'lucide-react';
+import { BULK_ACTION_DELAY_MS } from '../constants';
 
 // An ExpertGroup component to keep the main component cleaner
 const ExpertQuestionGroup: React.FC<{
@@ -82,7 +83,7 @@ const ExpertQuestionGroup: React.FC<{
 
 
 export const TrackedQuestionsSidebar: React.FC = () => {
-    const { trackedQuestions, isLoading, experts, selectedExpertRoles } = useAgileBloomStore();
+    const { trackedQuestions, isLoading, experts, selectedExpertRoles, addErrorMessage } = useAgileBloomStore();
     const { updateQuestionStatusAndPotentiallyGenerateActions } = useAgileBloomChat();
     const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -123,16 +124,22 @@ export const TrackedQuestionsSidebar: React.FC = () => {
         
         setIsBulkUpdating(true);
         try {
-            // Create a stable list of IDs to process
             const idsToProcess = [...selectedQuestionIds];
-            for (const id of idsToProcess) {
-                // We run them sequentially to avoid race conditions and potential rate limits,
-                // especially for 'Addressed' and 'Addressing' which trigger AI calls.
+            const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+            for (const [index, id] of idsToProcess.entries()) {
+                // For actions that trigger AI calls, add a delay between them to avoid rate limits
+                if (newStatus === QuestionStatus.Addressed || newStatus === QuestionStatus.Addressing) {
+                    if (index > 0) { // No delay before the first call
+                        await delay(BULK_ACTION_DELAY_MS);
+                    }
+                }
                 await updateQuestionStatusAndPotentiallyGenerateActions(id, newStatus);
             }
         } catch (error) {
             console.error("Error during bulk update:", error);
-            // Optionally add an error message to the store
+            const message = error instanceof Error ? `Bulk update failed: ${error.message}` : "An unknown error occurred during bulk update.";
+            addErrorMessage(message);
         } finally {
             setSelectedQuestionIds([]);
             setIsBulkUpdating(false);

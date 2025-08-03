@@ -49,9 +49,14 @@ export const AVAILABLE_COMMANDS: Command[] = [
 
 export const DEFAULT_NUM_THOUGHTS = 3;
 
+// Rate limiting for user text input
 export const RATE_LIMIT_MAX_MESSAGES_PER_WINDOW = 5;
 export const RATE_LIMIT_WINDOW_SECONDS = 10;
-export const RATE_LIMIT_RECHECK_INTERVAL_MS = 1000; // Currently used in comments, effect uses RATE_LIMIT_WINDOW_SECONDS
+export const RATE_LIMIT_RECHECK_INTERVAL_MS = 1000;
+
+// Delays for sequential, automated AI calls to avoid hitting API limits
+export const SEQUENTIAL_AI_CALL_DELAY_MS = 1200;
+export const BULK_ACTION_DELAY_MS = 1500;
 
 export const MAX_MEMORY_ENTRIES = 20;
 
