@@ -34,7 +34,7 @@ const ProviderBadge: React.FC<{ provider: AiProvider }> = ({ provider }) => {
 export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [topic, setTopic] = useState('');
   const [context, setContext] = useState('');
-  const { isQuotaExceeded, setQuotaExceeded, experts, addExpert, removeExpert } = useAgileBloomStore();
+  const { isQuotaExceeded, setQuotaExceeded, experts, addExpert, removeExpert, setCodebaseContext } = useAgileBloomStore();
 
   const [selectedProvider, setSelectedProvider] = useState<AiProvider>(AiProvider.Google);
   const [availableModelsForProvider, setAvailableModelsForProvider] = useState<AIModelConfig[]>([]);
@@ -130,6 +130,7 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
     setRepoFetchState({ status: 'loading', message: 'Fetching repository files...' });
     try {
       const { content: repoContent, fileCount } = await fetchGitHubRepoContents(gitRepoUrl);
+      setCodebaseContext(repoContent);
       setContext(prev => `${prev}\n\n--- Start of GitHub Repo Context ---\n${repoContent}\n--- End of GitHub Repo Context ---\n`.trim());
       setRepoFetchState({ status: 'success', message: `Successfully added content from ${fileCount} files.` });
     } catch (error) {

@@ -1,4 +1,3 @@
-
 import {create} from 'zustand';
 import { DiscussionMessage, ExpertRole, UploadedFile, TrackedQuestion, QuestionStatus, TrackedTask, TaskStatus, Expert, TrackedStory, StoryStatus, StoryPriority, AIConfig } from '../types';
 import { DEFAULT_EXPERTS, DEFAULT_NUM_THOUGHTS, MAX_MEMORY_ENTRIES, DEFAULT_AUTO_MODE_DELAY_SECONDS, ROLE_SYSTEM, ROLE_USER, ROLE_SCRUM_LEADER } from '../constants';
@@ -27,6 +26,7 @@ interface AgileBloomState {
   userMessageTimestamps: number[];
   isRateLimited: boolean;
   memoryContext: string[];
+  codebaseContext: string | null;
   uploadedFile: UploadedFile | null;
   
   trackedQuestions: TrackedQuestion[];
@@ -58,6 +58,7 @@ interface AgileBloomState {
   addUserMessageTimestamp: (timestamp: number) => void;
   setRateLimitedStatus: (isLimited: boolean) => void;
   addMemoryEntry: (entry: string) => void;
+  setCodebaseContext: (content: string | null) => void;
   setUploadedFile: (file: UploadedFile | null) => void;
   clearUploadedFile: () => void;
 
@@ -105,6 +106,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
   userMessageTimestamps: [],
   isRateLimited: false,
   memoryContext: [],
+  codebaseContext: null,
   uploadedFile: null,
   trackedQuestions: [],
   trackedTasks: [],
@@ -158,6 +160,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
       userMessageTimestamps: [],
       isRateLimited: false,
       memoryContext: [],
+      codebaseContext: null,
       uploadedFile: null,
       trackedQuestions: [],
       trackedTasks: [],
@@ -181,6 +184,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
     const newMemory = [...state.memoryContext, entry];
     return { memoryContext: newMemory.slice(-MAX_MEMORY_ENTRIES) }; 
   }),
+  setCodebaseContext: (content) => set({ codebaseContext: content }),
   setUploadedFile: (file: UploadedFile | null) => set({ uploadedFile: file }),
   clearUploadedFile: () => set({ uploadedFile: null }),
 
@@ -330,6 +334,7 @@ const useAgileBloomStore = create<AgileBloomState>((set, get) => ({
         userMessageTimestamps: [],
         isRateLimited: false,
         memoryContext: [],
+        codebaseContext: null, // Also clear codebase on import
         uploadedFile: null,
         trackedQuestions: [], 
         trackedTasks: [],

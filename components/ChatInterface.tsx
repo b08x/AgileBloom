@@ -5,7 +5,7 @@ import { CommandInput } from './CommandInput';
 import { LoadingSpinner } from './LoadingSpinner';
 import { HelpModal } from './HelpModal';
 import { RightSidebarContainer } from './RightSidebarContainer';
-import { ExpertTasksSidebar } from './ExpertTasksSidebar';
+import { LeftSidebarContainer } from './LeftSidebarContainer';
 
 export const ChatInterface: React.FC = () => {
   const { 
@@ -28,9 +28,9 @@ export const ChatInterface: React.FC = () => {
       
       <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 overflow-hidden p-2 sm:p-4 gap-4">
         
-        {/* Left Sidebar (Current Tasks) */}
+        {/* Left Sidebar (Tasks and Codebase) */}
         <div className="order-1 lg:col-span-3 hidden lg:flex flex-col overflow-hidden">
-          <ExpertTasksSidebar />
+          <LeftSidebarContainer />
         </div>
 
         {/* Center Column (Messages + Input) */}
