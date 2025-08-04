@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrainCircuit, MessageSquareText, Play, Cpu, CheckCircle, XCircle, Loader, ShieldAlert, KeyRound, Users, PlusCircle, Trash2, Github, Loader2 } from 'lucide-react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
-import { AVAILABLE_MODELS } from '../constants/providerConfig';
+import { fetchModelsForProvider } from '../services/modelService';
 import { AIModelConfig, AiProvider, AIConfig, ExpertRole, Expert } from '../types';
 import { validateApiKey } from '../services/validationService';
 import { fetchGitHubRepoContents } from '../services/gitService';
@@ -42,6 +42,9 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [availableModelsForProvider, setAvailableModelsForProvider] = useState<AIModelConfig[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   
+  const [modelsLoading, setModelsLoading] = useState<boolean>(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+
   const [modelConfigParams, setModelConfigParams] = useState<Record<string, number>>({});
   const [userApiKeys, setUserApiKeys] = useState<Partial<Record<AiProvider, string>>>({});
   const [apiKeyValidation, setApiKeyValidation] = useState<Partial<Record<AiProvider, { status: ValidationStatus; error?: string }>>>({});
@@ -56,17 +59,34 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [repoFetchState, setRepoFetchState] = useState<{ status: 'idle' | 'loading' | 'success' | 'error'; message: string; }>({ status: 'idle', message: '' });
 
   useEffect(() => {
-    const models = AVAILABLE_MODELS.filter(m => m.provider === selectedProvider);
-    setAvailableModelsForProvider(models);
-    if (models.length > 0) {
-      setSelectedModelId(models[0].id);
-    } else {
-      setSelectedModelId('');
-    }
+    const loadModels = async () => {
+        setModelsLoading(true);
+        setModelsError(null);
+        setAvailableModelsForProvider([]);
+        setSelectedModelId('');
+
+        try {
+            const models = await fetchModelsForProvider(selectedProvider);
+            setAvailableModelsForProvider(models);
+            if (models.length > 0) {
+                setSelectedModelId(models[0].id);
+            } else {
+                setModelsError(`No models are available for ${selectedProvider}.`);
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "An unknown error occurred while fetching models.";
+            console.error(error);
+            setModelsError(message);
+        } finally {
+            setModelsLoading(false);
+        }
+    };
+
+    loadModels();
   }, [selectedProvider]);
 
   useEffect(() => {
-    const model = AVAILABLE_MODELS.find(m => m.id === selectedModelId);
+    const model = availableModelsForProvider.find(m => m.id === selectedModelId);
     if (model) {
       const defaultParams = model.parameters.reduce((acc, param) => {
         acc[param.id] = param.defaultValue;
@@ -74,7 +94,7 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
       }, {} as Record<string, number>);
       setModelConfigParams(defaultParams);
     }
-  }, [selectedModelId]);
+  }, [selectedModelId, availableModelsForProvider]);
 
   const handleValidateKey = async (provider: AiProvider) => {
     const key = userApiKeys[provider];
@@ -214,6 +234,8 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
       </div>
     );
   };
+
+  const selectedModelConfig = availableModelsForProvider.find(m => m.id === selectedModelId);
 
   return (
     <div className="h-screen w-screen bg-[#333e48] grid grid-cols-1 lg:grid-cols-12">
@@ -356,23 +378,38 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
                    <select value={selectedProvider} onChange={(e) => setSelectedProvider(e.target.value as AiProvider)} className="w-full p-3 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e2a32d]">
                       {Object.values(AiProvider).map(p => <option key={p} value={p}>{p}</option>)}
                    </select>
-                   <select value={selectedModelId} onChange={(e) => setSelectedModelId(e.target.value)} className="w-full p-3 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e2a32d]">
-                      {availableModelsForProvider.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                   </select>
+                   <div className="relative">
+                        <select 
+                            value={selectedModelId} 
+                            onChange={(e) => setSelectedModelId(e.target.value)} 
+                            className="w-full p-3 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e2a32d] disabled:opacity-50 appearance-none" 
+                            disabled={modelsLoading || availableModelsForProvider.length === 0}
+                        >
+                          {modelsLoading && <option>Loading models...</option>}
+                          {!modelsLoading && availableModelsForProvider.length === 0 && <option>No models found</option>}
+                          {availableModelsForProvider.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        </select>
+                        {modelsLoading && (
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <Loader2 className="h-5 w-5 text-[#e2a32d] animate-spin" />
+                            </div>
+                        )}
+                   </div>
                </div>
-               {AVAILABLE_MODELS.find(m => m.id === selectedModelId) && 
+               {modelsError && <p className="text-xs text-red-300 mt-1 pl-1">{modelsError}</p>}
+               {selectedModelConfig && 
                   <div className="p-3 bg-[#212934]/50 rounded-lg text-sm text-[#95aac0] flex justify-between items-center">
-                      <p>{AVAILABLE_MODELS.find(m => m.id === selectedModelId)!.description}</p>
+                      <p>{selectedModelConfig.description}</p>
                       <ProviderBadge provider={selectedProvider} />
                   </div>
                 }
             </div>
 
             {/* Model Parameters */}
-            {AVAILABLE_MODELS.find(m => m.id === selectedModelId)?.parameters.length > 0 && (
+            {selectedModelConfig?.parameters.length > 0 && (
                <div className="space-y-4 p-4 bg-[#212934]/50 rounded-lg">
                   <h3 className="font-semibold text-gray-200">Model Parameters</h3>
-                  {AVAILABLE_MODELS.find(m => m.id === selectedModelId)!.parameters.map(param => (
+                  {selectedModelConfig.parameters.map(param => (
                     <SliderInput
                       key={param.id}
                       id={param.id}

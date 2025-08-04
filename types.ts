@@ -7,7 +7,7 @@ export enum AiProvider {
 }
 
 export interface ModelParameter {
-  id: 'temperature' | 'topP' | 'topK' | 'maxLength';
+  id: 'temperature' | 'topP' | 'topK' | 'maxLength' | 'thinkingBudget';
   name: string;
   type: 'slider';
   min: number;

@@ -5,7 +5,7 @@ import { generateText } from 'ai';
 import OpenAI from 'openai';
 import { DiscussionMessage, Expert, ExpertRole, GeminiResponseJson, UploadedFile, AiProvider } from '../types';
 import { INITIAL_SYSTEM_PROMPT_TEMPLATE, FISH_STORY_TASK_ANALYSIS_PROMPT, SUPPORTED_IMAGE_MIME_TYPES, ROLE_SCRUM_LEADER } from '../constants';
-import { AVAILABLE_MODELS } from '../constants/providerConfig';
+import { getModelConfigById } from './modelService';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 
 // --- Helper Functions ---
@@ -130,18 +130,29 @@ async function generateGeminiResponse(
       contentParts.push({ inlineData: { mimeType: uploadedImageFile.mimeType, data: uploadedImageFile.base64Data } });
   }
   contentParts.push({ text: userMessage || "Please analyze the provided content." });
+  
+  const { temperature, topP, topK, thinkingBudget, maxLength } = params;
+  const geminiConfig: any = {
+    systemInstruction: systemPromptText,
+    tools: useGoogleSearch ? [{ googleSearch: {} }] : undefined,
+    responseMimeType: useGoogleSearch ? undefined : "application/json",
+    temperature: temperature,
+    topP: topP,
+    topK: topK,
+  };
+
+  if (maxLength !== undefined) {
+    geminiConfig.maxOutputTokens = maxLength;
+  }
+
+  if (thinkingBudget !== undefined && modelId === 'gemini-2.5-flash') {
+    geminiConfig.thinkingConfig = { thinkingBudget: thinkingBudget };
+  }
 
   const response: GenerateContentResponse = await geminiAi.models.generateContent({
       model: modelId,
       contents: { parts: contentParts },
-      config: { 
-        systemInstruction: systemPromptText,
-        tools: useGoogleSearch ? [{ googleSearch: {} }] : undefined,
-        responseMimeType: useGoogleSearch ? undefined : "application/json",
-        temperature: params.temperature,
-        topP: params.topP,
-        topK: params.topK,
-      },
+      config: geminiConfig,
   });
   
   const parsedData = parseJsonResponse(response.text);
@@ -167,7 +178,6 @@ async function generateMistralResponse(
         system: systemPromptText,
         messages: [{ role: 'user', content: userMessage }],
         temperature: params.temperature,
-        safePrompt: false,
     });
     return parseJsonResponse(text);
 }
@@ -277,7 +287,7 @@ export async function getAiResponse(
         throw new Error(`API Key for the selected provider (${provider}) is missing.`);
     }
 
-    const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
+    const modelInfo = await getModelConfigById(modelId);
     if (!modelInfo) {
         throw new Error(`Model with ID '${modelId}' not found in supported models list.`);
     }
