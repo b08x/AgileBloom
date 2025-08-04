@@ -43,30 +43,26 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
-    const loadModels = async () => {
-        setModelsLoading(true);
-        setModelsError(null);
-        setAvailableModelsForProvider([]);
-        setSelectedModelId('');
+    setModelsLoading(true);
+    setModelsError(null);
+    setAvailableModelsForProvider([]);
+    setSelectedModelId('');
 
-        try {
-            const models = await fetchModelsForProvider(selectedProvider);
-            setAvailableModelsForProvider(models);
-            if (models.length > 0) {
-                setSelectedModelId(models[0].id);
-            } else {
-                setModelsError(`No models are available for ${selectedProvider}.`);
-            }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "An unknown error occurred while fetching models.";
-            console.error(error);
-            setModelsError(message);
-        } finally {
-            setModelsLoading(false);
+    try {
+        const models = fetchModelsForProvider(selectedProvider);
+        setAvailableModelsForProvider(models);
+        if (models.length > 0) {
+            setSelectedModelId(models[0].id);
+        } else {
+            setModelsError(`No models are available for ${selectedProvider}.`);
         }
-    };
-
-    loadModels();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "An unknown error occurred while fetching models.";
+        console.error(error);
+        setModelsError(message);
+    } finally {
+        setModelsLoading(false);
+    }
   }, [selectedProvider]);
 
   useEffect(() => {

@@ -1,4 +1,3 @@
-
 import { AIModelConfig, AiProvider } from '../types';
 
 // This data is moved from the old constants/providerConfig.ts
@@ -93,18 +92,15 @@ const ALL_MODELS_DB: AIModelConfig[] = [
 ];
 
 const modelCache = new Map<AiProvider, AIModelConfig[]>();
-const fetchDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Fetches available models for a given provider, with caching.
- * Simulates a network request.
+ * This is now a synchronous operation.
  */
-export const fetchModelsForProvider = async (provider: AiProvider): Promise<AIModelConfig[]> => {
+export const fetchModelsForProvider = (provider: AiProvider): AIModelConfig[] => {
     if (modelCache.has(provider)) {
         return modelCache.get(provider)!;
     }
-
-    await fetchDelay(300 + Math.random() * 400); // Simulate network latency
 
     const models = ALL_MODELS_DB.filter(model => model.provider === provider);
     modelCache.set(provider, models);
@@ -114,9 +110,8 @@ export const fetchModelsForProvider = async (provider: AiProvider): Promise<AIMo
 
 /**
  * Gets a single model's configuration by its ID.
- * Simulates a quick async lookup.
+ * This is now a synchronous operation.
  */
-export const getModelConfigById = async (modelId: string): Promise<AIModelConfig | undefined> => {
-    await fetchDelay(50);
+export const getModelConfigById = (modelId: string): AIModelConfig | undefined => {
     return ALL_MODELS_DB.find(model => model.id === modelId);
 };

@@ -362,6 +362,7 @@ export const useAgileBloomChat = () => {
 
     switch (commandName) {
       case "/ask":
+      case "/search":
       case "/suggest":
       case "/insight":
       case "/direction":

@@ -28,6 +28,7 @@ export const DEFAULT_EXPERT_ROLE_NAMES: ExpertRole[] = [
 export const AVAILABLE_COMMANDS: Command[] = [
   { name: "/elaborate", arguments: "{expert_name}", description: "Ask a specific expert to elaborate. Use one of the currently selected experts.", example: "/elaborate Engineer" },
   { name: "/ask", arguments: "{question_for_the_team}", description: "Ask a question. Experts will respond with their perspectives. May use Google Search for factual/current info.", example: "/ask What are the main risks?" },
+  { name: "/search", arguments: "{search_query}", description: "Searches the web for contextually relevant information using Google Search and discusses the findings.", example: "/search latest trends in AI-driven development" },
   { name: "/suggest", arguments: "{suggestion}", description: "Make a suggestion. Experts will provide feedback.", example: "/suggest Let's focus on user experience first." },
   { name: "/insight", arguments: "{insight_message}", description: "Share an insight. Experts will discuss its implications.", example: "/insight I noticed a pattern in user feedback." },
   { name: "/direction", arguments: "{directive_message}", description: "Provide a directive. Experts will acknowledge and discuss.", example: "/direction We need to finalize the MVP scope by EOD." },
@@ -173,7 +174,7 @@ Persistent Context (Key points from earlier in the discussion to remember):
 {{additional_context_section}}
 
 Google Search Capability:
-For queries like "/ask" seeking factual/current info, the system may use Google Search. If so, synthesize the search results into your answer. Citations will be shown to the user.
+For queries like "/ask" or "/search" seeking factual/current info, the system may use Google Search. If so, synthesize the search results into your answer. Citations will be shown to the user.
 
 General Interaction Flow:
 When the user provides input, each expert typically responds in sequence. Your persona for the response will be explicitly given. You must provide your expert perspective, considering previous responses, "Persistent Context", and any Google Search info.

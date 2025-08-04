@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, GenerateContentResponse, Part } from "@google/genai";
 import { createMistral } from '@ai-sdk/mistral';
 import { generateText } from 'ai';
@@ -287,7 +286,7 @@ export async function getAiResponse(
         throw new Error(`API Key for the selected provider (${provider}) is missing.`);
     }
 
-    const modelInfo = await getModelConfigById(modelId);
+    const modelInfo = getModelConfigById(modelId);
     if (!modelInfo) {
         throw new Error(`Model with ID '${modelId}' not found in supported models list.`);
     }
@@ -300,7 +299,8 @@ export async function getAiResponse(
     const aiCall = async (): Promise<GeminiResponseJson> => {
         switch(provider) {
             case AiProvider.Google:
-                const useGoogleSearch = currentUserMessageOrCommand.toLowerCase().startsWith("/ask") && modelInfo.supportsSearch;
+                const commandText = currentUserMessageOrCommand.toLowerCase();
+                const useGoogleSearch = (commandText.startsWith("/ask") || commandText.startsWith("/search")) && modelInfo.supportsSearch;
                 return await generateGeminiResponse(apiKey, modelId, systemPrompt, currentUserMessageOrCommand, useGoogleSearch, params, uploadedFile);
             
             case AiProvider.Mistral:
