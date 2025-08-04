@@ -1,37 +1,19 @@
-
 import React, { useState, useEffect } from 'react';
-import { BrainCircuit, MessageSquareText, Play, Cpu, CheckCircle, XCircle, Loader, ShieldAlert, KeyRound, Users, PlusCircle, Trash2, Github, Loader2 } from 'lucide-react';
+import { BrainCircuit, MessageSquareText, Play, ShieldAlert, Users, PlusCircle, Trash2, Github, Loader2, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 import useAgileBloomStore from '../store/useAgileBloomStore';
 import { fetchModelsForProvider } from '../services/modelService';
 import { AIModelConfig, AiProvider, AIConfig, ExpertRole, Expert } from '../types';
 import { validateApiKey } from '../services/validationService';
 import { fetchGitHubRepoContents } from '../services/gitService';
-import { SliderInput } from './SliderInput';
 import { DEFAULT_EXPERT_ROLE_NAMES, ROLE_SCRUM_LEADER } from '../constants';
-import { SetupDocumentationSidebar } from './SetupDocumentationSidebar';
+import { SetupHelpModal } from './SetupDocumentationSidebar';
+import { AIConfigSidebar } from './NarrativeSummarySidebar';
 
 interface SetupPageProps {
   onBegin: (topic: string, context: string, config: AIConfig, selectedRoles: ExpertRole[]) => void;
 }
 
 type ValidationStatus = 'unchecked' | 'pending' | 'valid' | 'invalid';
-
-const ProviderBadge: React.FC<{ provider: AiProvider }> = ({ provider }) => {
-  const styles = {
-    [AiProvider.Google]: { icon: '💎' },
-    [AiProvider.Mistral]: { icon: '⚡️' },
-    [AiProvider.OpenAI]: { icon: '🤖' },
-    [AiProvider.OpenRouter]: { icon: '🔄' },
-  };
-  const style = styles[provider];
-
-  return (
-    <span className="flex items-center text-xs text-gray-200 bg-[#5c6f7e]/50 px-2 py-0.5 rounded-full">
-      {style.icon}
-      <span className="ml-1.5">{provider}</span>
-    </span>
-  );
-};
 
 export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
   const [topic, setTopic] = useState('');
@@ -57,6 +39,8 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
 
   const [gitRepoUrl, setGitRepoUrl] = useState('');
   const [repoFetchState, setRepoFetchState] = useState<{ status: 'idle' | 'loading' | 'success' | 'error'; message: string; }>({ status: 'idle', message: '' });
+
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -93,6 +77,8 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
         return acc;
       }, {} as Record<string, number>);
       setModelConfigParams(defaultParams);
+      // Also reset API key validation when model changes, as some might have different requirements.
+      setApiKeyValidation({});
     }
   }, [selectedModelId, availableModelsForProvider]);
 
@@ -201,59 +187,26 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
     onBegin(topic, context, finalConfig, selectedExpertRoles);
   };
   
-  const renderApiKeyInput = (provider: AiProvider) => {
-    const validation = apiKeyValidation[provider];
-    return (
-      <div key={provider} className="bg-[#212934] p-4 rounded-lg border border-[#5c6f7e]">
-        <label htmlFor={`${provider}-key`} className="flex items-center text-md font-semibold text-gray-200 mb-2">
-            <KeyRound className="mr-3 text-[#e2a32d]" size={20} />
-            {provider} API Key
-        </label>
-        <div className="flex items-center gap-2">
-            <input
-                id={`${provider}-key`}
-                type="password"
-                value={userApiKeys[provider] || ''}
-                onChange={(e) => {
-                    setUserApiKeys(prev => ({...prev, [provider]: e.target.value}));
-                    setApiKeyValidation(prev => ({...prev, [provider]: { status: 'unchecked' }}));
-                    if(isQuotaExceeded) setQuotaExceeded(false);
-                }}
-                placeholder={`Enter your ${provider} API key`}
-                className="w-full p-3 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#e2a32d] transition-colors disabled:opacity-50"
-            />
-            <button type="button" onClick={() => handleValidateKey(provider)} disabled={!userApiKeys[provider] || validation?.status === 'pending'} className="px-4 py-2.5 h-[50px] bg-[#5c6f7e] rounded-lg hover:bg-[#95aac0] disabled:bg-[#5c6f7e]/50 disabled:cursor-not-allowed">
-              {validation?.status === 'pending' ? <Loader size={20} className="animate-spin" /> : "Validate"}
-            </button>
-            <div className="w-8 h-8 flex items-center justify-center">
-              {validation?.status === 'valid' && <span title="API Key is valid"><CheckCircle size={24} className="text-green-400" /></span>}
-              {validation?.status === 'invalid' && <span title={`Invalid: ${validation.error}`}><XCircle size={24} className="text-red-500" /></span>}
-            </div>
-        </div>
-        {validation?.status === 'invalid' && <p className="text-xs text-red-300 mt-2 ml-1">{validation.error}</p>}
-      </div>
-    );
-  };
-
-  const selectedModelConfig = availableModelsForProvider.find(m => m.id === selectedModelId);
-
   return (
-    <div className="h-screen w-screen bg-[#333e48] grid grid-cols-1 lg:grid-cols-12">
-      {/* Documentation Sidebar */}
-      <div className="hidden lg:block lg:col-span-5 xl:col-span-4">
-        <SetupDocumentationSidebar />
-      </div>
-
-      {/* Setup Form */}
-      <div className="col-span-12 lg:col-span-7 xl:col-span-8 h-screen overflow-y-auto scrollbar-thin scrollbar-thumb-[#5c6f7e] scrollbar-track-[#333e48]">
+    <div className="h-screen w-screen bg-[#212934] grid grid-cols-1 lg:grid-cols-12">
+      <SetupHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      {/* Main Form Area */}
+      <div className="col-span-12 lg:col-span-7 xl:col-span-8 h-screen overflow-y-auto scrollbar-thin scrollbar-thumb-[#5c6f7e] scrollbar-track-[#212934]">
         <div className="max-w-3xl w-full mx-auto p-8 sm:p-12 animate-fadeIn">
-          <header className="text-center mb-8">
+          <header className="relative text-center mb-8">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#e2a32d]">
               Discussion Setup
             </h1>
             <p className="text-md text-gray-200 mt-2">
               Set the stage for your AI team. A clear topic is essential for a focused discussion.
             </p>
+            <button
+              onClick={() => setIsHelpOpen(true)}
+              className="absolute top-0 right-0 p-2 rounded-full text-gray-400 hover:bg-[#e2a32d]/20 hover:text-[#e2a32d] transition-colors"
+              title="Help & Workflow"
+            >
+                <HelpCircle size={24} />
+            </button>
           </header>
 
           {isQuotaExceeded && (
@@ -368,76 +321,6 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
               </div>
             </div>
 
-            {/* Provider and Model Selection */}
-            <div className="space-y-4">
-               <label className="flex items-center text-lg font-semibold text-gray-200">
-                  <Cpu className="mr-3 text-[#e2a32d]" size={24} />
-                  Select AI Provider & Model
-               </label>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <select value={selectedProvider} onChange={(e) => setSelectedProvider(e.target.value as AiProvider)} className="w-full p-3 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e2a32d]">
-                      {Object.values(AiProvider).map(p => <option key={p} value={p}>{p}</option>)}
-                   </select>
-                   <div className="relative">
-                        <select 
-                            value={selectedModelId} 
-                            onChange={(e) => setSelectedModelId(e.target.value)} 
-                            className="w-full p-3 bg-[#212934] border-2 border-[#5c6f7e] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e2a32d] disabled:opacity-50 appearance-none" 
-                            disabled={modelsLoading || availableModelsForProvider.length === 0}
-                        >
-                          {modelsLoading && <option>Loading models...</option>}
-                          {!modelsLoading && availableModelsForProvider.length === 0 && <option>No models found</option>}
-                          {availableModelsForProvider.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                        </select>
-                        {modelsLoading && (
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                <Loader2 className="h-5 w-5 text-[#e2a32d] animate-spin" />
-                            </div>
-                        )}
-                   </div>
-               </div>
-               {modelsError && <p className="text-xs text-red-300 mt-1 pl-1">{modelsError}</p>}
-               {selectedModelConfig && 
-                  <div className="p-3 bg-[#212934]/50 rounded-lg text-sm text-[#95aac0] flex justify-between items-center">
-                      <p>{selectedModelConfig.description}</p>
-                      <ProviderBadge provider={selectedProvider} />
-                  </div>
-                }
-            </div>
-
-            {/* Model Parameters */}
-            {selectedModelConfig?.parameters.length > 0 && (
-               <div className="space-y-4 p-4 bg-[#212934]/50 rounded-lg">
-                  <h3 className="font-semibold text-gray-200">Model Parameters</h3>
-                  {selectedModelConfig.parameters.map(param => (
-                    <SliderInput
-                      key={param.id}
-                      id={param.id}
-                      label={param.name}
-                      min={param.min}
-                      max={param.max}
-                      step={param.step}
-                      value={modelConfigParams[param.id] ?? param.defaultValue}
-                      onChange={(val) => setModelConfigParams(prev => ({...prev, [param.id]: val}))}
-                    />
-                  ))}
-               </div>
-            )}
-
-            {/* API Key Section */}
-            <div className="space-y-4">
-              {renderApiKeyInput(selectedProvider)}
-              {selectedProvider === AiProvider.OpenRouter && (
-                <div className="p-4 bg-[#212934] rounded-lg border border-[#5c6f7e]">
-                   <label className="flex items-center space-x-3 cursor-pointer">
-                      <input type="checkbox" checked={enableGeminiPreprocessing} onChange={(e) => setEnableGeminiPreprocessing(e.target.checked)} className="h-5 w-5 rounded text-[#c36e26] bg-[#5c6f7e] border-[#95aac0] focus:ring-[#e2a32d]" />
-                      <span className="text-gray-200">Enable Gemini Preprocessing</span>
-                   </label>
-                   {enableGeminiPreprocessing && <div className="mt-4">{renderApiKeyInput(AiProvider.Google)}</div>}
-                </div>
-              )}
-            </div>
-
             {/* Submission Button */}
             <div className="border-t border-[#5c6f7e] pt-6 text-center">
               <button type="submit" disabled={!isReady} title={disabledReason} className="group inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white bg-[#c36e26] rounded-lg shadow-lg hover:bg-[#c36e26]/90 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-[#e2a32d]/50 transform hover:scale-105 disabled:bg-[#5c6f7e] disabled:cursor-not-allowed disabled:scale-100">
@@ -448,6 +331,28 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onBegin }) => {
             </div>
           </form>
         </div>
+      </div>
+      {/* AI Config Sidebar */}
+      <div className="hidden lg:block lg:col-span-5 xl:col-span-4 bg-[#333e48] border-l border-[#5c6f7e]">
+        <AIConfigSidebar 
+            selectedProvider={selectedProvider}
+            setSelectedProvider={setSelectedProvider}
+            availableModelsForProvider={availableModelsForProvider}
+            selectedModelId={selectedModelId}
+            setSelectedModelId={setSelectedModelId}
+            modelsLoading={modelsLoading}
+            modelsError={modelsError}
+            modelConfigParams={modelConfigParams}
+            setModelConfigParams={setModelConfigParams}
+            userApiKeys={userApiKeys}
+            setUserApiKeys={setUserApiKeys}
+            apiKeyValidation={apiKeyValidation}
+            handleValidateKey={handleValidateKey}
+            isQuotaExceeded={isQuotaExceeded}
+            setQuotaExceeded={setQuotaExceeded}
+            enableGeminiPreprocessing={enableGeminiPreprocessing}
+            setEnableGeminiPreprocessing={setEnableGeminiPreprocessing}
+        />
       </div>
     </div>
   );
