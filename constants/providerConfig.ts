@@ -15,23 +15,10 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
             { id: 'topK', name: 'Top-K', type: 'slider', min: 1, max: 100, step: 1, defaultValue: 40 },
         ]
     },
-    { 
-        id: 'gemini-2.0-flash', 
-        name: 'Gemini 2.0 Flash', 
-        provider: AiProvider.Google, 
-        description: 'Google\'s most capable model, for highly complex tasks that require top-tier reasoning.', 
-        supportsSearch: true,
-        supportsVision: true,
-        parameters: [
-            { id: 'temperature', name: 'Temperature', type: 'slider', min: 0, max: 2, step: 0.1, defaultValue: 0.8 },
-            { id: 'topP', name: 'Top-P', type: 'slider', min: 0, max: 1, step: 0.05, defaultValue: 0.95 },
-            { id: 'topK', name: 'Top-K', type: 'slider', min: 1, max: 100, step: 1, defaultValue: 40 },
-        ]
-    },
     // --- Mistral Models ---
     { 
-        id: 'mistral-large-2411', 
-        name: 'Mistral Large 2411', 
+        id: 'mistral-large-latest', 
+        name: 'Mistral Large', 
         provider: AiProvider.Mistral, 
         description: 'Top-tier reasoning capacities, for complex, specialized tasks.', 
         supportsSearch: false,
@@ -41,10 +28,10 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
         ]
     },
     { 
-        id: 'mistral-medium-2506',
-        name: 'Mistral Medium 2506',
+        id: 'mistral-medium-latest',
+        name: 'Mistral Medium',
         provider: AiProvider.Mistral,
-        description: 'Fast and cost-effective, ideal for high-throughput, low-latency workloads.', 
+        description: 'A balanced model suitable for a variety of tasks.', 
         supportsSearch: false,
         supportsVision: false,
         parameters: [

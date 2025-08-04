@@ -163,12 +163,11 @@ async function generateMistralResponse(
 ): Promise<GeminiResponseJson> {
     const mistralProvider = createMistral({ apiKey });
     const { text } = await generateText({
-        model: mistralProvider(modelId, { 
-            safePrompt: false,
-        }),
+        model: mistralProvider(modelId),
         system: systemPromptText,
         messages: [{ role: 'user', content: userMessage }],
         temperature: params.temperature,
+        safePrompt: false,
     });
     return parseJsonResponse(text);
 }

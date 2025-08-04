@@ -8,10 +8,9 @@ import { SetupPage } from './components/SetupPage';
 import { useAgileBloomChat } from './hooks/useAgileBloomChat';
 import useAgileBloomStore from './store/useAgileBloomStore';
 import { AIConfig, ExpertRole } from './types';
-import { ExplanationPage } from './components/ExplanationPage';
 
 const App: React.FC = () => {
-  const [appState, setAppState] = useState<'explanation' | 'landing' | 'setup' | 'chat'>('explanation');
+  const [appState, setAppState] = useState<'landing' | 'setup' | 'chat'>('landing');
   const { initiateDiscussion } = useAgileBloomChat();
   const { setAiConfig } = useAgileBloomStore();
 
@@ -20,10 +19,6 @@ const App: React.FC = () => {
     initiateDiscussion(topic, context, selectedRoles);
     setAppState('chat');
   };
-
-  if (appState === 'explanation') {
-    return <ExplanationPage onContinue={() => setAppState('landing')} />;
-  }
 
   if (appState === 'landing') {
     return <LandingPage onEnter={() => setAppState('setup')} />;

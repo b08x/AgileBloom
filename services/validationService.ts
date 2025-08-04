@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from '@google/genai';
 import { generateText } from 'ai';
 import { createMistral } from '@ai-sdk/mistral';
@@ -20,7 +19,7 @@ export async function validateApiKey(provider: AiProvider, apiKey: string): Prom
       case AiProvider.Google:
         const geminiAi = new GoogleGenAI({ apiKey });
         await geminiAi.models.generateContent({
-            model: 'gemini-2.0-flash', 
+            model: 'gemini-2.5-flash', 
             contents: 'test'
         });
         return { isValid: true };
